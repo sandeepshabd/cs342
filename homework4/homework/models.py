@@ -12,7 +12,21 @@ def extract_peak(heatmap, max_pool_ks=7, min_score=-5, max_det=100):
        @return: List of peaks [(score, cx, cy), ...], where cx, cy are the position of a peak and score is the
                 heatmap value at the peak. Return no more than max_det peaks per image
     """
-    raise NotImplementedError('extract_peak')
+    if not torch.is_tensor(heatmap):
+        heatmap = torch.tensor(heatmap)
+
+        # Apply 2D max pooling
+        pooled = F.max_pool2d(heatmap[None, None, ...], kernel_size=max_pool_ks, stride=1, padding=max_pool_ks // 2)
+
+        # Detect peaks: places where the original heatmap and its max pooled version are the same, and also above the threshold
+        peaks = (heatmap == pooled[0, 0]) & (heatmap > min_score)
+
+        # Get the scores and their coordinates
+        scores, y_coords, x_coords = torch.where(peaks, heatmap, torch.tensor(float('-inf'))).flatten().topk(max_det)
+
+        # Return list of peaks
+        return [(score.item(), x.item(), y.item()) for score, y, x in zip(scores, y_coords, x_coords)]
+
 
 
 class Detector(torch.nn.Module):
