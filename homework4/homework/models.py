@@ -12,20 +12,39 @@ def extract_peak(heatmap, max_pool_ks=7, min_score=-5, max_det=100):
        @return: List of peaks [(score, cx, cy), ...], where cx, cy are the position of a peak and score is the
                 heatmap value at the peak. Return no more than max_det peaks per image
     """
-    if not torch.is_tensor(heatmap):
-        heatmap = torch.tensor(heatmap)
+    #if not torch.is_tensor(heatmap):
+        #heatmap = torch.tensor(heatmap)
 
-        # Apply 2D max pooling
-        pooled = F.max_pool2d(heatmap[None, None, ...], kernel_size=max_pool_ks, stride=1, padding=max_pool_ks // 2)
+    # Apply 2D max pooling
+    pooled = F.max_pool2d(heatmap[None, None], kernel_size=max_pool_ks, stride=1, padding=max_pool_ks // 2)
+    pooled = pooled.to(heatmap.device)
+    pooled = torch.squeeze(pooled)
+    # Detect peaks: places where the original heatmap and its max pooled version are the same, and also above the threshold
+    peaks = (heatmap > min_score)
 
-        # Detect peaks: places where the original heatmap and its max pooled version are the same, and also above the threshold
-        peaks = (heatmap == pooled[0, 0]) & (heatmap > min_score)
+    # Get the scores and their coordinates
+    #scores, y_coords, x_coords = torch.where(peaks, heatmap, torch.tensor(0.).to(pooled.device)).flatten().topk(k=max_det,dim=0,sorted=False)
+    #torch.where(peaks, heatmap, torch.tensor(float('-inf'))).flatten().topk(max_det)
 
-        # Get the scores and their coordinates
-        scores, y_coords, x_coords = torch.where(peaks, heatmap, torch.tensor(float('-inf'))).flatten().topk(max_det)
+    # Return list of peaks
+    #return [(score.item(), x.item(), y.item()) for score, y, x in zip(scores, y_coords, x_coords)]
+    
 
-        # Return list of peaks
-        return [(score.item(), x.item(), y.item()) for score, y, x in zip(scores, y_coords, x_coords)]
+    new_heatmap = torch.where(peaks,heatmap,torch.tensor(0.).to(pooled.device)).to(pooled.device)
+    comparison = heatmap>=pooled
+    comparison.to(pooled.device)
+    
+    res = torch.where(comparison,new_heatmap,torch.tensor(0.).to(pooled.device))
+    res = res.to(pooled.device)
+    
+    nonzero = torch.nonzero(res,as_tuple=True)
+    nums = res[nonzero]
+    
+    indices = range(0,len(nums))
+    if len(nums) > max_det:
+        values,indices = torch.topk(nums,k=max_det,dim=0,sorted=False)
+    peaks = list(zip(nums[indices],nonzero[1][indices],nonzero[0][indices]))
+    return peaks
 
 
 
