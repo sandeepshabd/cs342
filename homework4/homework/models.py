@@ -1,5 +1,5 @@
 import torch
-import torch.nn.functional as F
+
 
 
 def extract_peak(heatmap, max_pool_ks=7, min_score=-5, max_det=100):
@@ -16,7 +16,7 @@ def extract_peak(heatmap, max_pool_ks=7, min_score=-5, max_det=100):
         #heatmap = torch.tensor(heatmap)
 
     # Apply 2D max pooling
-    pooled = F.max_pool2d(heatmap[None, None], kernel_size=max_pool_ks, stride=1, padding=max_pool_ks // 2)
+    pooled = torch.nn.functional.max_pool2d(heatmap[None, None], kernel_size=max_pool_ks, stride=1, padding=max_pool_ks // 2)
     pooled = pooled.to(heatmap.device)
     pooled = torch.squeeze(pooled)
     # Detect peaks: places where the original heatmap and its max pooled version are the same, and also above the threshold
@@ -49,36 +49,77 @@ def extract_peak(heatmap, max_pool_ks=7, min_score=-5, max_det=100):
 
 
 class Detector(torch.nn.Module):
-    def __init__(self):
-        """
-           Your code here.
-           Setup your detection network
-        """
-        super(Detector, self).__init__()
-                # Convolutional block
-        self.block = torch.nn.Sequential(
-            torch.nn.Conv2d(3, 64, 3, padding=1),
-            torch.nn.BatchNorm2d(64),
-            torch.nn.ReLU(),
-            torch.nn.Conv2d(64, 128, 3, padding=1),
-            torch.nn.BatchNorm2d(128),
-            torch.nn.ReLU(),
-            torch.nn.MaxPool2d(2, 2)  # downsample by half
-        )
-        
-        # Upsample block
-        self.upblock = torch.nn.ConvTranspose2d(128, 3, 4, stride=2, padding=1) 
+    
+    class DetectorUpBlock(torch.nn.Module):
+        def __init__(self, in_channels, out_channels, kernel_size=3):
+            super().__init__()
+            self.conv = torch.nn.ConvTranspose2d(in_channels, out_channels, kernel_size=kernel_size, padding=kernel_size // 2, stride=2, output_padding=1)
 
+        def forward(self, x):
+            return torch.nn.functional.relu(self.conv(x))
+    
+    class DetectorBlock(torch.nn.Module):
+        def __init__(self, in_channels, out_channels, kernel_size=3):
+            super().__init__()
+            
+            self.conv1 = torch.nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, padding=kernel_size // 2, stride=2)
+            self.batch1 = torch.nn.BatchNorm2d(out_channels)
+            self.conv2 = torch.nn.Conv2d(out_channels, out_channels, kernel_size=kernel_size, padding=kernel_size // 2)
+            self.batch2 = torch.nn.BatchNorm2d(out_channels)
+            self.conv3 = torch.nn.Conv2d(out_channels, out_channels, kernel_size=kernel_size, padding=kernel_size // 2)
+            self.batch3 = torch.nn.BatchNorm2d(out_channels)
+           
+           
+           
+            
+            
+            if in_channels != out_channels:
+                self.skip = torch.nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=2)
+            else:
+                self.skip = torch.nn.Identity()
+                
+            
+            #self.skip = torch.nn.Conv2d(n_input, n_output, kernel_size=1, stride=stride)
+
+        def forward(self, x):
+            return torch.nn.functional.relu(
+                self.batch3(
+                    self.conv3(
+                        torch.nn.functional.relu(
+                            self.batch2(
+                                self.conv2(
+                                    torch.nn.functional.relu(
+                                        self.batch1(
+                                            self.conv1(x)))))))) 
+                          + 
+                          self.skip(x))
+    
+    def __init__(self, layers=[16, 32, 64, 128], n_output_channels=3, kernel_size=3, use_skip=True):
+        super(Detector, self).__init__()
+        
+        self.blocks = torch.nn.ModuleList()
+        in_channels = 3  # Input image has 3 channels
+        
+        for out_channels in layers:
+            self.blocks.append(self.DetectorBlock(in_channels, out_channels, kernel_size))
+            in_channels = out_channels
+
+        # Adding an UpBlock at the end to upsample the output of the last block
+        self.upblocks = torch.nn.ModuleList([
+            self.DetectorUpBlock(128, 64, kernel_size),
+            self.DetectorUpBlock(64, 32, kernel_size),
+            self.DetectorUpBlock(32, 16, kernel_size),
+            self.DetectorUpBlock(16, n_output_channels, kernel_size)
+        ])
 
     def forward(self, x):
-        """
-           Your code here.
-           Implement a forward pass through the network, use forward for training,
-           and detect for detection
-        """
-        x = self.block(x)
-        heatmaps = torch.sigmoid(self.upblock(x))
-        return heatmaps
+        for block in self.blocks:
+            x = block(x)
+        for upblock in self.upblocks:
+            x= upblock(x)
+        return x
+        
+
 
     def detect(self, image):
         """

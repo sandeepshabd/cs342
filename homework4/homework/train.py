@@ -9,7 +9,7 @@ import inspect
 
 
 def train(args):
-    device = torch.device('cuda') #if torch.cuda.is_available() else torch.device('cpu')
+    device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     from os import path
     model = Detector()
     model = model.to(device)
@@ -50,8 +50,10 @@ def train(args):
             image = image.to(device)
             label = image.to(device)
             size = image.to(device)
-            
+            print(image.shape)
             output = model(image).to(device)
+            print(output.shape)
+            print(label.shape)
             loss_data = loss(output, label).to(device)
             
             if global_step % 100 == 0  and train_logger is not None:
