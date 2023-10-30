@@ -31,9 +31,9 @@ def train(args):
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=1e-5)
     
-    #loss = FocalLoss().to(device)
+    loss = FocalLoss().to(device)
     size_loss = torch.nn.MSELoss(reduction='none')
-    loss = torch.nn.BCEWithLogitsLoss().to(device)
+    #loss = torch.nn.BCEWithLogitsLoss().to(device)
     
 
     transform = eval('Compose([ColorJitter(0.9, 0.9, 0.9, 0.1), RandomHorizontalFlip(), ToTensor(), ToHeatmap()])', {k: v for k, v in inspect.getmembers(dense_transforms) if inspect.isclass(v)})

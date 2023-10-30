@@ -1,5 +1,5 @@
 import torch
-import torch.nn.functional as F
+
 
 class FocalLoss(torch.nn.Module):
     def __init__(self, alpha=0.25, gamma=2.0, reduction='mean'):
@@ -7,14 +7,19 @@ class FocalLoss(torch.nn.Module):
         self.alpha = alpha
         self.gamma = gamma
         self.reduction = reduction
-
-    def forward(self, inputs, targets):
-        BCE_loss = torch.nn.functional.binary_cross_entropy_with_logits(inputs, targets, reduction='none')
         
-        # Compute the term that scales the BCE loss based on the truth value and the prediction
-        pt = torch.exp(-BCE_loss)
+    def forward(self, input, target):
+        input = input.contiguous().view(input.size(0), input.size(1), -1)
+        input = input.transpose(1,2)
+        input = input.contiguous().view(-1, input.size(2)).squeeze()
+        target = target.contiguous().view(target.size(0), target.size(1), -1)
+        target = target.transpose(1,2)
+        target = target.contiguous().view(-1, target.size(2)).squeeze()
+        BCE_loss = torch.nn.functional.binary_cross_entropy_with_logits(input, target, reduction=self.reduction,pos_weight=torch.tensor([.69,.95,.85]).to(target.device))
+        pt = torch.exp(-BCE_loss) # prevents nans when probability 0
         F_loss = self.alpha * (1-pt)**self.gamma * BCE_loss
-        return torch.mean(F_loss)
+        return F_loss.mean()
+
 
 def extract_peak(heatmap, max_pool_ks=7, min_score=-5, max_det=100):
     """
@@ -153,33 +158,12 @@ class Detector(torch.nn.Module):
         return self.classifier(z), self.size(z)
 
     def detect(self, image, **kwargs):
-        """
-           Your code here.
-           Implement object detection here.
-           @image: 3 x H x W image
-           @return: Three list of detections [(score, cx, cy, w/2, h/2), ...], one per class,
-                    return no more than 30 detections per image per class. You only need to predict width and height
-                    for extra credit. If you do not predict an object size, return w=0, h=0.
-           Hint: Use extract_peak here
-           Hint: Make sure to return three python lists of tuples of (float, int, int, float, float) and not a pytorch
-                 scalar. Otherwise pytorch might keep a computation graph in the background and your program will run
-                 out of memory.
-        """
+
         cls, size = self.forward(image[None])
         size = size.cpu()
-        return [
-        
-                 [  
-                    (s, x, y, float(size[0, 0, y, x]), float(size[0, 1, y, x]))  #returns a list of five-tuples
-              
+        return [[(s, x, y, float(size[0, 0, y, x]), float(size[0, 1, y, x]))  #returns a list of five-tuples
                         for s, x, y in extract_peak(c, max_det=30, **kwargs) 
-                 
-                 ]
-                 
-                 
-                  for c in cls[0]
-                 
-                 ]
+                 ]for c in cls[0]]
 
 
 def save_model(model):
