@@ -1,6 +1,25 @@
 import torch
 
+class FocalLoss(torch.nn.Module):
+    def __init__(self, alpha=0.25, gamma=2.0, reduction='mean'):
+        super(FocalLoss, self).__init__()
+        self.alpha = alpha
+        self.gamma = gamma
+        self.reduction = reduction
 
+    def forward(self, inputs, targets):
+        BCE_loss = torch.nn.functional.binary_cross_entropy_with_logits(inputs, targets, reduction='none')
+        
+        # Compute the term that scales the BCE loss based on the truth value and the prediction
+        pt = torch.exp(-BCE_loss)
+        F_loss = self.alpha * (1-pt)**self.gamma * BCE_loss
+
+        if self.reduction == 'sum':
+            return torch.sum(F_loss)
+        elif self.reduction == 'mean':
+            return torch.mean(F_loss)
+        else:
+            return F_loss
 
 def extract_peak(heatmap, max_pool_ks=7, min_score=-5, max_det=100):
     """
