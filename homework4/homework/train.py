@@ -31,9 +31,9 @@ def train(args):
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=1e-5)
     
-    loss = FocalLoss().to(device)
+    #loss = FocalLoss().to(device)
     size_loss = torch.nn.MSELoss(reduction='none')
-    #loss = torch.nn.BCEWithLogitsLoss().to(device)
+    loss = torch.nn.BCEWithLogitsLoss().to(device)
     
 
     transform = eval('Compose([ColorJitter(0.9, 0.9, 0.9, 0.1), RandomHorizontalFlip(), ToTensor(), ToHeatmap()])', {k: v for k, v in inspect.getmembers(dense_transforms) if inspect.isclass(v)})
@@ -43,7 +43,8 @@ def train(args):
     valid_data = load_detection_data('dense_data/valid', num_workers=4, transform=validation_transform)
     
     global_step = 0
-    for epoch in range(2):
+    for epoch in range(30):
+        print(epoch)
         model.train()
         loss_value = []
         
@@ -75,8 +76,9 @@ def train(args):
             optimizer.step()
             global_step += 1
 
-        if valid_logger is None or train_logger is None:
+        if  train_logger is None:
              print('epoch %-3d \t loss = %0.3f \t acc = %0.3f \t val acc = %0.3f' % (epoch, det_loss_val, size_loss_val, loss_val))
+             
         save_model(model)
 
 def log(logger, imgs, gt_det, det, global_step):
