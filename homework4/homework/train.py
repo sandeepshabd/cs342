@@ -5,6 +5,7 @@ from .models import Detector, save_model
 from .utils import load_detection_data
 from . import dense_transforms
 import torch.utils.tensorboard as tb
+import inspect
 
 
 def train(args):
@@ -34,11 +35,51 @@ def train(args):
     #loss = FocalLoss(gamma=args.gamma, alpha=args.alpha).to(device)
     loss = torch.nn.BCEWithLogitsLoss().to(device)
     
-    import inspect
-    transform = eval(args.transform, {k: v for k, v in inspect.getmembers(dense_transforms) if inspect.isclass(v)})
-    validation_transform=eval(args.valid_transform, {k: v for k, v in inspect.getmembers(dense_transforms) if inspect.isclass(v)})
+
+    transform = eval('Compose([ColorJitter(0.9, 0.9, 0.9, 0.1), RandomHorizontalFlip(), ToTensor(), ToHeatmap()])', {k: v for k, v in inspect.getmembers(dense_transforms) if inspect.isclass(v)})
+    validation_transform=eval('Compose([ToTensor(), ToHeatmap()])', {k: v for k, v in inspect.getmembers(dense_transforms) if inspect.isclass(v)})
+    
     train_data = load_detection_data('dense_data/train', num_workers=4, transform=transform)
     valid_data = load_detection_data('dense_data/valid', num_workers=4, transform=validation_transform)
+    
+    global_step = 0
+    for epoch in range(20):
+        model.train()
+        loss_value = []
+        
+        for image, label, size in train_data:
+            image = image.to(device)
+            label = image.to(label)
+            size = image.to(size)
+            
+            output = model(image).to(device)
+            loss_data = loss(output, label).to(device)
+            
+            if global_step % 100 == 0  and train_logger is not None:
+                log(train_logger, image, label, output, global_step)
+                train_logger.add_scalar('loss', loss_data, global_step)
+                loss_value.append(loss_data)
+                
+            optimizer.zero_grad()
+            loss_data.backward()
+            optimizer.step()
+            global_step += 1
+            
+        avg_loss = sum(loss_value) / len(loss_value)
+        print('avg loss for epoch',epoch,'=',avg_loss.item())
+        model.eval()
+        print('now evaluating epoch',epoch)
+        
+        for image, label, size in valid_data:
+            image, label, size = image.to(device), label.to(device), size.to(device)
+            output = model(image)
+
+        if valid_logger is not None:
+            log(valid_logger, image, label, output, global_step)
+        save_model(model)
+            
+            
+        
 
 
 def log(logger, imgs, gt_det, det, global_step):
@@ -59,6 +100,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--log_dir')
+    parser.add_argument('-c', '--continue_training', action='store_true')
+    parser.add_argument('-lr', '--learning_rate', type=float, default=1e-3)
     # Put custom arguments here
 
     args = parser.parse_args()
