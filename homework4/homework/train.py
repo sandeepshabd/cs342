@@ -43,7 +43,7 @@ def train(args):
     valid_data = load_detection_data('dense_data/valid', num_workers=4, transform=validation_transform)
     
     global_step = 0
-    for epoch in range(20):
+    for epoch in range(2):
         model.train()
         loss_value = []
         
@@ -76,8 +76,7 @@ def train(args):
             global_step += 1
 
         if valid_logger is None or train_logger is None:
-            print('epoch %-3d' %
-                  (epoch))
+             print('epoch %-3d \t loss = %0.3f \t acc = %0.3f \t val acc = %0.3f' % (epoch, det_loss_val, size_loss_val, loss_val))
         save_model(model)
 
 def log(logger, imgs, gt_det, det, global_step):
