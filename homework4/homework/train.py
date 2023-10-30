@@ -48,8 +48,8 @@ def train(args):
         
         for image, label, size in train_data:
             image = image.to(device)
-            label = image.to(label)
-            size = image.to(size)
+            label = image.to(device)
+            size = image.to(device)
             
             output = model(image).to(device)
             loss_data = loss(output, label).to(device)
