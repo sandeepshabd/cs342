@@ -116,8 +116,8 @@ class Detector(torch.nn.Module):
            Setup your detection network
         """
         super().__init__()
-        self.input_mean = torch.Tensor([0.2788, 0.2657, 0.2629])
-        self.input_std = torch.Tensor([0.2064, 0.1944, 0.2252])
+        self.input_mean = torch.Tensor([0.2, 0.2, 0.2])
+        self.input_std = torch.Tensor([0.2, 0.2, 0.2])
 
         c = 3
         self.use_skip = use_skip

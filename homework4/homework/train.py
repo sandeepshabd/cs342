@@ -31,9 +31,9 @@ def train(args):
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=1e-5)
     
-    loss = FocalLoss().to(device)
+    #loss = FocalLoss().to(device)
     size_loss = torch.nn.MSELoss(reduction='none')
-    #loss = torch.nn.BCEWithLogitsLoss().to(device)
+    loss = torch.nn.BCEWithLogitsLoss().to(device)
     
 
     transform = eval('Compose([ColorJitter(0.9, 0.9, 0.9, 0.1), RandomHorizontalFlip(), ToTensor(), ToHeatmap()])', {k: v for k, v in inspect.getmembers(dense_transforms) if inspect.isclass(v)})
@@ -43,7 +43,7 @@ def train(args):
     valid_data = load_detection_data('dense_data/valid', num_workers=4, transform=validation_transform)
     
     global_step = 0
-    for epoch in range(150):
+    for epoch in range(50):
         print(epoch)
         model.train()
         loss_value = []
@@ -54,20 +54,20 @@ def train(args):
             det_size = det_size.to(device)
             #print(image.shape)
             
-            size_w, _ = label.max(dim=1, keepdim=True)
-            det, size = model(image)
+            size_label, _ = label.max(dim=1, keepdim=True)
+            output, size = model(image)
             
             # Continuous version of focal loss
-            p_det = torch.sigmoid(det * (1-2*label))
-            det_loss_val = (loss(det, label)*p_det).mean() / p_det.mean()
-            size_loss_val = (size_w * size_loss(size, det_size)).mean() / size_w.mean()
+            p_det = torch.sigmoid(output * (1-2*label))
+            det_loss_val = (loss(output, label)*p_det).mean() / p_det.mean()
+            size_loss_val = (size_label * size_loss(size, det_size)).mean() / size_label.mean()
             loss_val = det_loss_val + size_loss_val * 0.01
 
             if train_logger is not None and global_step % 100 == 0:
-                log(train_logger, image, label, det, global_step)
+                log(train_logger, image, label, output, global_step)
 
             if train_logger is not None:
-                train_logger.add_scalar('img_loss', det_loss_val, global_step)
+                train_logger.add_scalar('data_loss', det_loss_val, global_step)
                 train_logger.add_scalar('size_loss', size_loss_val, global_step)
                 train_logger.add_scalar('loss', loss_val, global_step)
                 
@@ -77,6 +77,19 @@ def train(args):
             global_step += 1
 
         print('epoch %-3d \t loss = %0.3f \t acc = %0.3f \t val acc = %0.3f' % (epoch, det_loss_val, size_loss_val, loss_val))
+        
+        for img, label, size in valid_data:
+            img, label, size = img.to(device), label.to(device), size.to(device)
+            size_label, _ = label.max(dim=1, keepdim=True)
+            output, size = model(image)
+            
+            p_det = torch.sigmoid(output * (1-2*label))
+            det_loss_val = (loss(output, label)*p_det).mean() / p_det.mean()
+            size_loss_val = (size_label * size_loss(size, det_size)).mean() / size_label.mean()
+            loss_val = det_loss_val + size_loss_val * 0.01
+            
+        if valid_logger is not None :
+            log(valid_logger, image, label, output, global_step)
 
              
         save_model(model)
