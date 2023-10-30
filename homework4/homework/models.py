@@ -14,13 +14,7 @@ class FocalLoss(torch.nn.Module):
         # Compute the term that scales the BCE loss based on the truth value and the prediction
         pt = torch.exp(-BCE_loss)
         F_loss = self.alpha * (1-pt)**self.gamma * BCE_loss
-
-        if self.reduction == 'sum':
-            return torch.sum(F_loss)
-        elif self.reduction == 'mean':
-            return torch.mean(F_loss)
-        else:
-            return F_loss
+        return torch.mean(F_loss)
 
 def extract_peak(heatmap, max_pool_ks=7, min_score=-5, max_det=100):
     """

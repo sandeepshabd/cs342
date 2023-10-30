@@ -76,8 +76,8 @@ def train(args):
             optimizer.step()
             global_step += 1
 
-        if  train_logger is None:
-             print('epoch %-3d \t loss = %0.3f \t acc = %0.3f \t val acc = %0.3f' % (epoch, det_loss_val, size_loss_val, loss_val))
+        print('epoch %-3d \t loss = %0.3f \t acc = %0.3f \t val acc = %0.3f' % (epoch, det_loss_val, size_loss_val, loss_val))
+
              
         save_model(model)
 
