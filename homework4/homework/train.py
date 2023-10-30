@@ -50,10 +50,10 @@ def train(args):
             image = image.to(device)
             label = image.to(device)
             size = image.to(device)
-            print(image.shape)
+            #print(image.shape)
             output = model(image).to(device)
-            print(output.shape)
-            print(label.shape)
+            #print(output.shape)
+            #print(label.shape)
             loss_data = loss(output, label).to(device)
             
             if global_step % 100 == 0  and train_logger is not None:
