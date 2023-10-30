@@ -123,7 +123,7 @@ class Detector(torch.nn.Module):
             c = l
         # Produce lower res output
         for i, l in list(enumerate(layers))[::-1]:
-            self.add_module('upconv%d' % i, self.UpDetectorBlock(c, l, kernel_size, 2))
+            self.add_module('upconv%d' % i, self.DetectorUpBlock(c, l, kernel_size, 2))
             c = l
             if self.use_skip:
                 c += skip_layer_size[i]
