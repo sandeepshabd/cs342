@@ -62,29 +62,48 @@ def extract_peak(heatmap, max_pool_ks=7, min_score=-5, max_det=100):
 
 
 class Detector(torch.nn.Module):
-    class Block(torch.nn.Module):
-        def __init__(self, n_input, n_output, kernel_size=3, stride=2):
+
+    class DetectorBlock(torch.nn.Module):
+        def __init__(self, in_channels, out_channels, kernel_size=3,stride=2):
             super().__init__()
-            self.c1 = torch.nn.Conv2d(n_input, n_output, kernel_size=kernel_size, padding=kernel_size // 2,
-                                      stride=stride)
-            self.c2 = torch.nn.Conv2d(n_output, n_output, kernel_size=kernel_size, padding=kernel_size // 2)
-            self.c3 = torch.nn.Conv2d(n_output, n_output, kernel_size=kernel_size, padding=kernel_size // 2)
-            self.b1 = torch.nn.BatchNorm2d(n_output)
-            self.b2 = torch.nn.BatchNorm2d(n_output)
-            self.b3 = torch.nn.BatchNorm2d(n_output)
-            self.skip = torch.nn.Conv2d(n_input, n_output, kernel_size=1, stride=stride)
+            
+            self.conv1 = torch.nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, padding=kernel_size // 2, stride=stride)
+            self.batch1 = torch.nn.BatchNorm2d(out_channels)
+            self.conv2 = torch.nn.Conv2d(out_channels, out_channels, kernel_size=kernel_size, padding=kernel_size // 2)
+            self.batch2 = torch.nn.BatchNorm2d(out_channels)
+            self.conv3 = torch.nn.Conv2d(out_channels, out_channels, kernel_size=kernel_size, padding=kernel_size // 2)
+            self.batch3 = torch.nn.BatchNorm2d(out_channels)
+           
+         
+            if in_channels != out_channels:
+                self.skip = torch.nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=stride)
+            else:
+                self.skip = torch.nn.Identity()
+                
+            
+            #self.skip = torch.nn.Conv2d(n_input, n_output, kernel_size=1, stride=stride)
 
         def forward(self, x):
-            return F.relu(self.b3(self.c3(F.relu(self.b2(self.c2(F.relu(self.b1(self.c1(x)))))))) + self.skip(x))
+            return torch.nn.functional.relu(
+                self.batch3(
+                    self.conv3(
+                        torch.nn.functional.relu(
+                            self.batch2(
+                                self.conv2(
+                                    torch.nn.functional.relu(
+                                        self.batch1(
+                                            self.conv1(x)))))))) 
+                          + 
+                          self.skip(x))
 
-    class UpBlock(torch.nn.Module):
-        def __init__(self, n_input, n_output, kernel_size=3, stride=2):
+    class DetectorUpBlock(torch.nn.Module):
+        def __init__(self, in_channels, out_channels, kernel_size=3, stride=2):
             super().__init__()
-            self.c1 = torch.nn.ConvTranspose2d(n_input, n_output, kernel_size=kernel_size, padding=kernel_size // 2,
-                                               stride=stride, output_padding=1)
+            self.conv = torch.nn.ConvTranspose2d(in_channels, out_channels, kernel_size=kernel_size, 
+                                                 padding=kernel_size // 2, stride=stride, output_padding=1)
 
         def forward(self, x):
-            return F.relu(self.c1(x))
+            return torch.nn.functional.relu(self.conv(x))
 
     def __init__(self, layers=[16, 32, 64, 128], n_class=3, kernel_size=3, use_skip=True):
         """
@@ -100,11 +119,11 @@ class Detector(torch.nn.Module):
         self.n_conv = len(layers)
         skip_layer_size = [3] + layers[:-1]
         for i, l in enumerate(layers):
-            self.add_module('conv%d' % i, self.Block(c, l, kernel_size, 2))
+            self.add_module('conv%d' % i, self.DetectorBlock(c, l, kernel_size, 2))
             c = l
         # Produce lower res output
         for i, l in list(enumerate(layers))[::-1]:
-            self.add_module('upconv%d' % i, self.UpBlock(c, l, kernel_size, 2))
+            self.add_module('upconv%d' % i, self.UpDetectorBlock(c, l, kernel_size, 2))
             c = l
             if self.use_skip:
                 c += skip_layer_size[i]
