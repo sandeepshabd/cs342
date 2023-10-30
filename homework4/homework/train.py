@@ -49,7 +49,7 @@ def train(args):
     valid_data = load_detection_data('dense_data/valid', num_workers=4, transform=validation_transform)
     
     global_step = 0
-    for epoch in range(60):
+    for epoch in range(100):
         print(epoch)
         model.train()
         loss_value = []
@@ -119,7 +119,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--log_dir')
     parser.add_argument('-c', '--continue_training', action='store_true')
-    parser.add_argument('-lr', '--learning_rate', type=float, default=1e-4)
+    parser.add_argument('-lr', '--learning_rate', type=float, default=1e-6)
     # Put custom arguments here
 
     args = parser.parse_args()
