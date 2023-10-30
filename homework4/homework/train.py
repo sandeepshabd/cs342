@@ -33,17 +33,23 @@ def train(args):
     
     #loss = FocalLoss().to(device)
     size_loss = torch.nn.MSELoss(reduction='none')
-    loss = torch.nn.BCEWithLogitsLoss().to(device)
+    loss = torch.nn.BCEWithLogitsLoss(reduction='none').to(device)
     
 
-    transform = eval('Compose([ColorJitter(0.9, 0.9, 0.9, 0.1), RandomHorizontalFlip(), ToTensor(), ToHeatmap()])', {k: v for k, v in inspect.getmembers(dense_transforms) if inspect.isclass(v)})
-    validation_transform=eval('Compose([ToTensor(), ToHeatmap()])', {k: v for k, v in inspect.getmembers(dense_transforms) if inspect.isclass(v)})
+    transform = eval('Compose([ColorJitter(0.5, 0.5, 0.5, 0.1), '+
+                     'RandomHorizontalFlip(), '+
+                     'ToTensor(), '+
+                     'ToHeatmap()])', 
+                     {k: v for k, v in inspect.getmembers(dense_transforms) if inspect.isclass(v)})
+    
+    validation_transform=eval('Compose([ToTensor(), ToHeatmap()])',
+                              {k: v for k, v in inspect.getmembers(dense_transforms) if inspect.isclass(v)})
     
     train_data = load_detection_data('dense_data/train', num_workers=4, transform=transform)
     valid_data = load_detection_data('dense_data/valid', num_workers=4, transform=validation_transform)
     
     global_step = 0
-    for epoch in range(50):
+    for epoch in range(60):
         print(epoch)
         model.train()
         loss_value = []
@@ -76,7 +82,7 @@ def train(args):
             optimizer.step()
             global_step += 1
 
-        print('epoch %-3d \t loss = %0.3f \t acc = %0.3f \t val acc = %0.3f' % (epoch, det_loss_val, size_loss_val, loss_val))
+        print('epoch %-3d \t det_loss_val = %0.3f \t size_loss_val = %0.3f \t loss_val = %0.3f' % (epoch, det_loss_val, size_loss_val, loss_val))
         
         for img, label, size in valid_data:
             img, label, size = img.to(device), label.to(device), size.to(device)
@@ -113,7 +119,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--log_dir')
     parser.add_argument('-c', '--continue_training', action='store_true')
-    parser.add_argument('-lr', '--learning_rate', type=float, default=1e-3)
+    parser.add_argument('-lr', '--learning_rate', type=float, default=1e-4)
     # Put custom arguments here
 
     args = parser.parse_args()
