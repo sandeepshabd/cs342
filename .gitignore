@@ -3,3 +3,6 @@ homework4/logs
 
 homework4/homework/det.th
 homework4/homework/__pycache__
+*.pyc
+homework4/homework/__pycache__/models.cpython-311.pyc
+homework4/homework/__pycache__/models.cpython-311.pyc

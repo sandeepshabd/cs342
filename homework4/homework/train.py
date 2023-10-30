@@ -9,10 +9,9 @@ import inspect
 
 
 def train(args):
+    device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     from os import path
     model = Detector()
-    
-    device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     model = model.to(device)
     
     
@@ -68,7 +67,7 @@ def train(args):
         avg_loss = sum(loss_value) / len(loss_value)
         print('avg loss for epoch',epoch,'=',avg_loss.item())
         model.eval()
-        print('now evaluating epoch',epoch)
+  
         
         for image, label, size in valid_data:
             image, label, size = image.to(device), label.to(device), size.to(device)
