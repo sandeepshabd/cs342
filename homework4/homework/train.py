@@ -43,7 +43,7 @@ def train(args):
     valid_data = load_detection_data('dense_data/valid', num_workers=4, transform=validation_transform)
     
     global_step = 0
-    for epoch in range(30):
+    for epoch in range(150):
         print(epoch)
         model.train()
         loss_value = []
