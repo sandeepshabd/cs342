@@ -32,6 +32,7 @@ def train(args):
     optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=1e-5)
     
     loss = FocalLoss().to(device)
+    size_loss = torch.nn.MSELoss(reduction='none')
     #loss = torch.nn.BCEWithLogitsLoss().to(device)
     
 
@@ -46,43 +47,38 @@ def train(args):
         model.train()
         loss_value = []
         
-        for image, label, size in train_data:
+        for image, label, det_size in train_data:
             image = image.to(device)
-            label = image.to(device)
-            size = image.to(device)
+            label = label.to(device)
+            det_size = det_size.to(device)
             #print(image.shape)
-            output = model(image).to(device)
-            #print(output.shape)
-            #print(label.shape)
-            loss_data = loss(output, label).to(device)
             
-            if global_step % 100 == 0  and train_logger is not None:
-                log(train_logger, image, label, output, global_step)
-                train_logger.add_scalar('loss', loss_data, global_step)
-                loss_value.append(loss_data)
+            size_w, _ = label.max(dim=1, keepdim=True)
+            det, size = model(image)
+            
+            # Continuous version of focal loss
+            p_det = torch.sigmoid(det * (1-2*label))
+            det_loss_val = (loss(det, label)*p_det).mean() / p_det.mean()
+            size_loss_val = (size_w * size_loss(size, det_size)).mean() / size_w.mean()
+            loss_val = det_loss_val + size_loss_val * 0.01
+
+            if train_logger is not None and global_step % 100 == 0:
+                log(train_logger, image, label, det, global_step)
+
+            if train_logger is not None:
+                train_logger.add_scalar('img_loss', det_loss_val, global_step)
+                train_logger.add_scalar('size_loss', size_loss_val, global_step)
+                train_logger.add_scalar('loss', loss_val, global_step)
                 
             optimizer.zero_grad()
-            loss_data.backward()
+            loss_val.backward()
             optimizer.step()
             global_step += 1
-        
-        if(len(loss_value) >0 )  :  
-            avg_loss = sum(loss_value) / len(loss_value)
-        print('avg loss for epoch',epoch,'=',avg_loss.item())
-        model.eval()
-  
-        
-        for image, label, size in valid_data:
-            image, label, size = image.to(device), label.to(device), size.to(device)
-            output = model(image)
 
-        if valid_logger is not None:
-            log(valid_logger, image, label, output, global_step)
+        if valid_logger is None or train_logger is None:
+            print('epoch %-3d' %
+                  (epoch))
         save_model(model)
-            
-            
-        
-
 
 def log(logger, imgs, gt_det, det, global_step):
     """
