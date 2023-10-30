@@ -65,8 +65,9 @@ def train(args):
             loss_data.backward()
             optimizer.step()
             global_step += 1
-            
-        avg_loss = sum(loss_value) / len(loss_value)
+        
+        if(len(loss_value) >0 )  :  
+            avg_loss = sum(loss_value) / len(loss_value)
         print('avg loss for epoch',epoch,'=',avg_loss.item())
         model.eval()
   
