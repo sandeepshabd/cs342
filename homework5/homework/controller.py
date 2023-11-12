@@ -91,18 +91,19 @@ def control(aim_point, current_vel):
 
     return action
 
+def test_controller(args):
+    import numpy as np
+    pytux = PyTux()
+    for t in args.track:
+        steps, how_far = pytux.rollout(t, control, max_frames=1000, verbose=args.verbose)
+        print(steps, how_far)
+    pytux.close()
 
 if __name__ == '__main__':
     from .utils import PyTux
     from argparse import ArgumentParser
 
-    def test_controller(args):
-        import numpy as np
-        pytux = PyTux()
-        for t in args.track:
-            steps, how_far = pytux.rollout(t, control, max_frames=1000, verbose=args.verbose)
-            print(steps, how_far)
-        pytux.close()
+
 
 
     parser = ArgumentParser()
