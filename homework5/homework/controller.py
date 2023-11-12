@@ -59,7 +59,7 @@ def control(aim_point, current_vel):
     action.nitro = should_use_nitro(current_velocity)
     
     
-    """
+    
     
      # Calculate the desired steering angle
     # aim_point[0] is the x-coordinate of the aim point (-1 to 1)
@@ -88,8 +88,26 @@ def control(aim_point, current_vel):
     # Decide whether to drift
     # Drift if the aim point is far to the side and the speed is high
     action.drift = np.abs(steering_angle) > BRAKE_THRESHOLD and current_speed > MAX_VELOCITY
+    
+    """
+    
+        # set acceleration
+    accel_val = 3 * np.exp(-current_vel / 15)
+    accel_val = np.clip(accel_val, 0, 1)
+    action.acceleration = accel_val
+    
+    # set and clip steer value
+    steer_val = aim_point[0] * 1.69
+    steer_val = np.clip(steer_val,-1,1)
+    action.steer = steer_val
+    
+    # set drift
+    action.drift = False
+    if abs(aim_point[0]) > 0.420 and aim_point[1]>=-0.3 and abs(aim_point[0]) < 0.9: 
+        action.drift = True
 
     return action
+
 
 def test_controller(pytux, track, verbose=False):
     import numpy as np
@@ -112,7 +130,7 @@ if __name__ == '__main__':
     test_controller(pytux, **vars(parser.parse_args()))
     pytux.close()
     """
-   if __name__ == '__main__':
+if __name__ == '__main__':
     from .utils import PyTux
     from argparse import ArgumentParser
 
@@ -130,8 +148,4 @@ if __name__ == '__main__':
     parser.add_argument('-v', '--verbose', action='store_true')
     args = parser.parse_args()
     test_controller(args) 
-    
-    
-    
-    """
-
+"""  
