@@ -105,6 +105,6 @@ if __name__ == '__main__':
 
     parser.add_argument('--log_dir', default = '../logger/')
     # Put custom arguments here
-
+    parser.add_argument('-c', '--continue_training', action='store_true')
     args = parser.parse_args()
     train(args)
