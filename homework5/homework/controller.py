@@ -24,7 +24,11 @@ def should_brake(aim_point, current_velocity):
 
 def should_drift(aim_point):
     # Drift on sharp turns
-    return abs(aim_point.x) > 0.7
+    action_drift = False
+    if abs(aim_point[0]) > 0.420 and aim_point[1]>=-0.3 and abs(aim_point[0]) < 0.9: 
+       action_drift = True
+
+    return action_drift
 
 def should_use_nitro(current_velocity, aim_point):
     # Use nitro in certain conditions
@@ -91,19 +95,11 @@ def control(aim_point, current_vel):
     action.drift = np.abs(steering_angle) > BRAKE_THRESHOLD and current_speed > MAX_VELOCITY
     
     """
-    
-        # set acceleration
-
     action.acceleration =  calculate_acceleration(current_vel) 
-    
-    # set and clip steer value
   
     action.steer = calculate_steering_angle(aim_point)
     
-    # set drift
-    action.drift = False
-    if abs(aim_point[0]) > 0.420 and aim_point[1]>=-0.3 and abs(aim_point[0]) < 0.9: 
-        action.drift = True
+    action.drift = should_drift()
 
     return action
 
