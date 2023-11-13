@@ -28,23 +28,21 @@ class Planner(torch.nn.Module):
             return F.relu(self.c1(x))
     
     class Block(torch.nn.Module):
+
         def __init__(self, n_input, n_output, kernel_size=3, stride=2):
             super().__init__()
-            self.conv_layers = torch.nn.Sequential(
-                torch.nn.Conv2d(n_input, n_output, kernel_size, stride=stride, padding=kernel_size // 2),
-                torch.nn.BatchNorm2d(n_output),
-                torch.nn.ReLU(inplace=True),
-                torch.nn.Conv2d(n_output, n_output, kernel_size, padding=kernel_size // 2),
-                torch.nn.BatchNorm2d(n_output),
-                torch.nn.ReLU(inplace=True),
-                torch.nn.Conv2d(n_output, n_output, kernel_size, padding=kernel_size // 2),
-                torch.nn.BatchNorm2d(n_output),
-                torch.nn.ReLU(inplace=True)
-            )
+            self.c1 = torch.nn.Conv2d(n_input, n_output, kernel_size=kernel_size, padding=kernel_size // 2,
+                                      stride=stride)
+            self.c2 = torch.nn.Conv2d(n_output, n_output, kernel_size=kernel_size, padding=kernel_size // 2)
+            self.c3 = torch.nn.Conv2d(n_output, n_output, kernel_size=kernel_size, padding=kernel_size // 2)
+            self.b1 = torch.nn.BatchNorm2d(n_output)
+            self.b2 = torch.nn.BatchNorm2d(n_output)
+            self.b3 = torch.nn.BatchNorm2d(n_output)
             self.skip = torch.nn.Conv2d(n_input, n_output, kernel_size=1, stride=stride)
 
         def forward(self, x):
-            return F.relu(self.conv_layers(x) + self.skip(x))
+            return F.relu(self.b3(self.c3(F.relu(self.b2(self.c2(F.relu(self.b1(self.c1(x)))))))) + self.skip(x))
+
         
     def __init__(self, layers=[16, 32, 64, 128], n_class=1, kernel_size=3, use_skip=True):
         super().__init__()
