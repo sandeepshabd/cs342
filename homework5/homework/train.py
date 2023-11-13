@@ -15,10 +15,10 @@ def train(args):
         train_logger = tb.SummaryWriter(path.join(args.log_dir, 'train'))
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=1e-5)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-5)
     
     import inspect
-    transform = eval(args.transform, {k: v for k, v in inspect.getmembers(dense_transforms) if inspect.isclass(v)})
+    transform = eval('Compose([ColorJitter(0.9, 0.9, 0.9, 0.1), RandomHorizontalFlip(), ToTensor()])', {k: v for k, v in inspect.getmembers(dense_transforms) if inspect.isclass(v)})
     train_loader = load_data('drive_data', num_workers=4, transform=transform)
     
     #loss_function = torch.nn.BCEWithLogitsLoss(reduction='none')
@@ -34,7 +34,7 @@ def trainData(model, optimizer, loss_function, train_data_loader, device, args, 
         load_model_state(model, args.model_path)
 
     global_step = 0
-    for epoch in range(args.num_epochs):
+    for epoch in range(125):
         model.train()
         loss_vals = []
 
@@ -103,7 +103,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--log_dir')
+    parser.add_argument('--log_dir', default = '../logger/')
     # Put custom arguments here
 
     args = parser.parse_args()
