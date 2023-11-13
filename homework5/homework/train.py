@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime
 from .planner import Planner, save_model 
 import torch
 import torch.utils.tensorboard as tb
@@ -61,10 +61,11 @@ def train(args):
             global_step += 1
         avg_loss = sum(loss_vals) / len(loss_vals)
         
-        now = datetime.now()
+        nowTime = datetime.now()
 
-        current_time = now.strftime("%H:%M:%S")
-        print("Current Time =", current_time,' ,epoch=',epoch,' ,Avergae Loss=',avg_loss.item())
+        # Format the date and time as a string
+        date_time_str = nowTime.strftime("%Y-%m-%d %H:%M:%S")
+        print("Current Time =", date_time_str,' ,epoch=',epoch,' ,Avergae Loss=',avg_loss.item())
 
         save_model(model)
 
