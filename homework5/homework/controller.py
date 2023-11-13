@@ -96,10 +96,8 @@ def control(aim_point, current_vel):
     
     """
     action.acceleration =  calculate_acceleration(current_vel) 
-  
     action.steer = calculate_steering_angle(aim_point)
-    
-    action.drift = should_drift()
+    action.drift = should_drift(aim_point)
 
     return action
 
