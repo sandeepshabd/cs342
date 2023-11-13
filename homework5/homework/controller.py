@@ -103,7 +103,7 @@ def control(aim_point, current_vel):
 
 
 def test_controller(pytux, track, verbose=False):
-    import numpy as np
+   
 
     track = [track] if isinstance(track, str) else track
 
