@@ -24,14 +24,15 @@ def train(args):
     #loss_function = torch.nn.BCEWithLogitsLoss(reduction='none')
     size_loss_function = torch.nn.MSELoss(reduction='mean')
     
-    trainData(model, optimizer, size_loss_function, train_loader, device, args, train_logger)
+    trainData(model, optimizer, size_loss_function, train_loader, device, args.continue_training, train_logger)
 
 
-def trainData(model, optimizer, loss_function, train_data_loader, device, args, logger=None):
+def trainData(model, optimizer, loss_function, train_data_loader, device, continue_training, logger=None):
     model = model.to(device)
 
-    if args.continue_training:
-        load_model_state(model, args.model_path)
+    if continue_training:
+        load_model_state(model, 'planner.th')
+
 
     global_step = 0
     for epoch in range(125):
@@ -44,7 +45,7 @@ def trainData(model, optimizer, loss_function, train_data_loader, device, args, 
             det = model(img)
             loss_val = loss_function(det, gt_det)
 
-            if logger is not None and global_step % args.log_frequency == 0:
+            if logger is not None and global_step % 20 == 0:
                 log_metrics(logger, img, gt_det, det, loss_val, global_step)
 
             optimizer.zero_grad()
@@ -55,7 +56,7 @@ def trainData(model, optimizer, loss_function, train_data_loader, device, args, 
 
         avg_loss = sum(loss_vals) / len(loss_vals)
         print(f'Average loss for epoch {epoch} = {avg_loss}')
-        save_model(model, args.model_path)
+        save_model(model, 'planner.th')
 
 def load_model_state(model, model_path):
     from os import path
