@@ -48,24 +48,29 @@ class Planner(torch.nn.Module):
         
     def __init__(self, layers=[16, 32, 64, 128], n_class=1, kernel_size=3, use_skip=True):
         super().__init__()
-        self.input_mean = torch.Tensor([0.2788, 0.2657, 0.2629])
-        self.input_std = torch.Tensor([0.2064, 0.1944, 0.2252])
+
+        self.input_mean = torch.Tensor([0.3, 0.25, 0.27])
+        self.input_std = torch.Tensor([0.19, 0.19, 0.18])
         
-        c = 3
+        c_input = 3
         self.use_skip = use_skip
         self.n_conv = len(layers)
+        
         skip_layer_size = [3] + layers[:-1]
-        for i, l in enumerate(layers):
-            self.add_module('conv%d' % i, self.Block(c, l, kernel_size, 2))
-            c = l
-        # Produce lower res output
-        for i, l in list(enumerate(layers))[::-1]:
-            self.add_module('upconv%d' % i, self.UpBlock(c, l, kernel_size, 2))
-            c = l
+        for i, layer_i in enumerate(layers):
+            self.add_module('conv%d' % i, self.Block(c_input, layer_i, kernel_size, 2))
+            c_input = layer_i
+
+
+        for i, layer_i in list(enumerate(layers))[::-1]:
+            self.add_module('upconv%d' % i, self.UpBlock(c_input, layer_i, kernel_size, 2))
+            c_input = layer_i
             if self.use_skip:
-                c += skip_layer_size[i]
-        self.classifier = torch.nn.Conv2d(c, n_class, 1)
-        #self.size = torch.nn.Conv2d(c, 2, 1)
+                c_input += skip_layer_size[i]
+                
+                
+        self.classifier = torch.nn.Conv2d(c_input, n_class, 1)
+
 
     def forward(self, x):
         """
@@ -76,23 +81,23 @@ class Planner(torch.nn.Module):
         """
         z = (x - self.input_mean[None, :, None, None].to(x.device)) / self.input_std[None, :, None, None].to(x.device)
         up_activation = []
+        
         for i in range(self.n_conv):
-            # Add all the information required for skip connections
             up_activation.append(z)
             z = self._modules['conv%d' % i](z)
 
         for i in reversed(range(self.n_conv)):
             z = self._modules['upconv%d' % i](z)
-            # Fix the padding
             z = z[:, :, :up_activation[i].size(2), :up_activation[i].size(3)]
-            # Add the skip connection
             if self.use_skip:
                 z = torch.cat([z, up_activation[i]], dim=1)
+                
+                
         encoder = self.classifier(z)
         encoder = torch.squeeze(encoder,dim=1)
-        #print('encoder size =',encoder.size())
+        
         decoder = spatial_argmax(encoder)
-        return decoder#, self.size(z)
+        return decoder
 
 def save_model(model):
     from torch import save

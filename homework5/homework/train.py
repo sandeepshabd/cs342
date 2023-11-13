@@ -4,6 +4,7 @@ import torch.utils.tensorboard as tb
 import numpy as np
 from .utils import load_data
 from . import dense_transforms
+import inspect
 
 def train(args):
     from os import path
@@ -17,6 +18,7 @@ def train(args):
     Hint: Use the log function below to debug and visualize your model
     """
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+    basic_transform = 'Compose([ColorJitter(0.9, 0.9, 0.9, 0.1), RandomHorizontalFlip(), ToTensor()])'
 
     model = model.to(device)
     if args.continue_training:
@@ -25,10 +27,9 @@ def train(args):
     size_loss = torch.nn.MSELoss(reduction='mean')
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-5)
 
-    import inspect
-    basic_transform = 'Compose([ColorJitter(0.9, 0.9, 0.9, 0.1), RandomHorizontalFlip(), ToTensor()])'
-    transform = eval(basic_transform, {k: v for k, v in inspect.getmembers(dense_transforms) if inspect.isclass(v)})
     
+    
+    transform = eval(basic_transform, {k: v for k, v in inspect.getmembers(dense_transforms) if inspect.isclass(v)})
     train_data = load_data('drive_data', num_workers=4, transform=transform)
 
    
