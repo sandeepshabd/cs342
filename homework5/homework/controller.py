@@ -2,19 +2,20 @@
 import pystk
 import numpy as np
 
-STEER_GAIN = 1.0  # This needs to be tuned
+STEER_CONST = 1.69  # This needs to be tuned
 VELOCITY_GAIN = 0.1  # This needs to be tuned
 BRAKE_THRESHOLD = 0.1  # This needs to be tuned
 MAX_VELOCITY = 5.0  # Set this to the desired max velocity
 
-def calculate_steering_angle(x):
+def calculate_steering_angle(aim_point):
     # Simple proportional control
-    return x
+    steer_val = aim_point[0] * STEER_CONST
+
+    return np.clip(steer_val,-1,1)
 
 def calculate_acceleration(current_velocity):
-    # Implement your logic here
-    # For example, full acceleration if not at max speed
-    return 1.0 if current_velocity < MAX_VELOCITY else 0.5
+    accel_val = 3 * np.exp(-current_velocity / 15)
+    return np.clip(accel_val, 0, 1)
 
 def should_brake(aim_point, current_velocity):
     # Implement your logic here
@@ -92,14 +93,12 @@ def control(aim_point, current_vel):
     """
     
         # set acceleration
-    accel_val = 3 * np.exp(-current_vel / 15)
-    accel_val = np.clip(accel_val, 0, 1)
-    action.acceleration = accel_val
+
+    action.acceleration =  calculate_acceleration(current_vel) 
     
     # set and clip steer value
-    steer_val = aim_point[0] * 1.69
-    steer_val = np.clip(steer_val,-1,1)
-    action.steer = steer_val
+  
+    action.steer = calculate_steering_angle(aim_point)
     
     # set drift
     action.drift = False
