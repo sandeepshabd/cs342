@@ -24,10 +24,10 @@ def train(args):
     #loss_function = torch.nn.BCEWithLogitsLoss(reduction='none')
     size_loss_function = torch.nn.MSELoss(reduction='mean')
     
-    train(model, optimizer, size_loss_function, train_loader, device, args, train_logger)
+    trainData(model, optimizer, size_loss_function, train_loader, device, args, train_logger)
 
 
-def train(model, optimizer, loss_function, train_data_loader, device, args, logger=None):
+def trainData(model, optimizer, loss_function, train_data_loader, device, args, logger=None):
     model = model.to(device)
 
     if args.continue_training:
