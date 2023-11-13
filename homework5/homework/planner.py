@@ -1,6 +1,5 @@
 import torch
 import torch.nn.functional as F
-import torch.nn as nn
 
 
 def spatial_argmax(logit):
@@ -14,21 +13,8 @@ def spatial_argmax(logit):
                         (weights.sum(2) * torch.linspace(-1, 1, logit.size(1)).to(logit.device)[None]).sum(1)), 1)
 
 
-        
-
 class Planner(torch.nn.Module):
-    
-    class UpBlock(torch.nn.Module):
-        def __init__(self, n_input, n_output, kernel_size=3, stride=2):
-            super().__init__()
-            self.c1 = torch.nn.ConvTranspose2d(n_input, n_output, kernel_size=kernel_size, padding=kernel_size // 2,
-                                                stride=stride, output_padding=1)
-
-        def forward(self, x):
-            return F.relu(self.c1(x))
-    
     class Block(torch.nn.Module):
-
         def __init__(self, n_input, n_output, kernel_size=3, stride=2):
             super().__init__()
             self.c1 = torch.nn.Conv2d(n_input, n_output, kernel_size=kernel_size, padding=kernel_size // 2,
@@ -43,12 +29,24 @@ class Planner(torch.nn.Module):
         def forward(self, x):
             return F.relu(self.b3(self.c3(F.relu(self.b2(self.c2(F.relu(self.b1(self.c1(x)))))))) + self.skip(x))
 
-        
+    class UpBlock(torch.nn.Module):
+        def __init__(self, n_input, n_output, kernel_size=3, stride=2):
+            super().__init__()
+            self.c1 = torch.nn.ConvTranspose2d(n_input, n_output, kernel_size=kernel_size, padding=kernel_size // 2,
+                                               stride=stride, output_padding=1)
+
+        def forward(self, x):
+            return F.relu(self.c1(x))
+    
     def __init__(self, layers=[16, 32, 64, 128], n_class=1, kernel_size=3, use_skip=True):
         super().__init__()
+
+        """
+        Your code here
+        """
         self.input_mean = torch.Tensor([0.2788, 0.2657, 0.2629])
         self.input_std = torch.Tensor([0.2064, 0.1944, 0.2252])
-        
+
         c = 3
         self.use_skip = use_skip
         self.n_conv = len(layers)
@@ -91,6 +89,7 @@ class Planner(torch.nn.Module):
         #print('encoder size =',encoder.size())
         decoder = spatial_argmax(encoder)
         return decoder#, self.size(z)
+
 
 def save_model(model):
     from torch import save
