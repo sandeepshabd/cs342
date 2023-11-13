@@ -51,7 +51,7 @@ class Planner(torch.nn.Module):
         self.input_mean = torch.Tensor([0.2788, 0.2657, 0.2629])
         self.input_std = torch.Tensor([0.2064, 0.1944, 0.2252])
         
-c = 3
+        c = 3
         self.use_skip = use_skip
         self.n_conv = len(layers)
         skip_layer_size = [3] + layers[:-1]
