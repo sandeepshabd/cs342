@@ -50,33 +50,49 @@ class Planner(torch.nn.Module):
         super().__init__()
         self.input_mean = torch.Tensor([0.2788, 0.2657, 0.2629])
         self.input_std = torch.Tensor([0.2064, 0.1944, 0.2252])
+        
+c = 3
         self.use_skip = use_skip
-        self.layers = layers
-
-        self.down_blocks = nn.ModuleList([self.Block(3 if i == 0 else layers[i - 1], l, kernel_size) for i, l in enumerate(layers)])
-        self.up_blocks = nn.ModuleList([self.UpBlock(layers[-i - 1], layers[-i - 2], kernel_size) for i in range(len(layers) - 1)])
-        self.classifier = torch.nn.Conv2d(layers[0], n_class, 1)
+        self.n_conv = len(layers)
+        skip_layer_size = [3] + layers[:-1]
+        for i, l in enumerate(layers):
+            self.add_module('conv%d' % i, self.Block(c, l, kernel_size, 2))
+            c = l
+        # Produce lower res output
+        for i, l in list(enumerate(layers))[::-1]:
+            self.add_module('upconv%d' % i, self.UpBlock(c, l, kernel_size, 2))
+            c = l
+            if self.use_skip:
+                c += skip_layer_size[i]
+        self.classifier = torch.nn.Conv2d(c, n_class, 1)
+        #self.size = torch.nn.Conv2d(c, 2, 1)
 
     def forward(self, x):
-            x = self.normalize_input(x)
-            skip_connections = []
+        """
+        Your code here
+        Predict the aim point in image coordinate, given the supertuxkart image
+        @img: (B,3,96,128)
+        return (B,2)
+        """
+        z = (x - self.input_mean[None, :, None, None].to(x.device)) / self.input_std[None, :, None, None].to(x.device)
+        up_activation = []
+        for i in range(self.n_conv):
+            # Add all the information required for skip connections
+            up_activation.append(z)
+            z = self._modules['conv%d' % i](z)
 
-            for block in self.down_blocks:
-                skip_connections.append(x)
-                x = block(x)
-
-            for i, block in enumerate(reversed(self.up_blocks)):
-                x = block(x)
-                if self.use_skip:
-                    skip = skip_connections[-i - 2]
-                    x = torch.cat([x, skip], dim=1)
-
-            x = self.classifier(x)
-            x = torch.squeeze(x, dim=1)
-            return spatial_argmax(x)
-
-    def normalize_input(self, x):
-        return (x - self.input_mean[None, :, None, None].to(x.device)) / self.input_std[None, :, None, None].to(x.device)
+        for i in reversed(range(self.n_conv)):
+            z = self._modules['upconv%d' % i](z)
+            # Fix the padding
+            z = z[:, :, :up_activation[i].size(2), :up_activation[i].size(3)]
+            # Add the skip connection
+            if self.use_skip:
+                z = torch.cat([z, up_activation[i]], dim=1)
+        encoder = self.classifier(z)
+        encoder = torch.squeeze(encoder,dim=1)
+        #print('encoder size =',encoder.size())
+        decoder = spatial_argmax(encoder)
+        return decoder#, self.size(z)
 
 def save_model(model):
     from torch import save
