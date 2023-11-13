@@ -138,7 +138,7 @@ class PyTux:
                 with io.BytesIO() as buff:
                     fig.savefig(buff,format='raw')
                     buff.seek(0)
-                    data = np.frombuffer(buff.getvalue(), dtype=np. dtype=np.uint8)
+                    data = np.frombuffer(buff.getvalue(), dtype=np.uint8)
                 w,h = fig.canvas.get_width_height()
                 im = data.reshape((int(h),int(w), -1))
                 
