@@ -5,7 +5,7 @@ import numpy as np
 STEER_CONST = 1.69  # This needs to be tuned
 VELOCITY_GAIN = 0.1  # This needs to be tuned
 BRAKE_THRESHOLD = 0.1  # This needs to be tuned
-MAX_VELOCITY = 5.0  # Set this to the desired max velocity
+MAX_VELOCITY = 4.0  # Set this to the desired max velocity
 
 def calculate_steering_angle(aim_point):
     # Simple proportional control
@@ -14,18 +14,18 @@ def calculate_steering_angle(aim_point):
     return np.clip(steer_val,-1,1)
 
 def calculate_acceleration(current_velocity):
-    accel_val = 3 * np.exp(-current_velocity / 15)
+    accel_val = 2 * np.exp(-current_velocity / 15)
     return np.clip(accel_val, 0, 1)
 
 def should_brake(aim_point, current_velocity):
     # Implement your logic here
     # For example, brake if the turn is sharp and speed is high
-    return abs(aim_point.x) > 0.5 and current_velocity > MAX_VELOCITY
+    return abs(aim_point.x) > 0.45 and current_velocity > MAX_VELOCITY
 
 def should_drift(aim_point):
     # Drift on sharp turns
     action_drift = False
-    if abs(aim_point[0]) > 0.420 and aim_point[1]>=-0.3 and abs(aim_point[0]) < 0.9: 
+    if abs(aim_point[0]) > 0.41 and abs(aim_point[0]) < 0.8 and aim_point[1]>=-0.29 : 
        action_drift = True
 
     return action_drift
@@ -106,7 +106,6 @@ def test_controller(pytux, track, verbose=False):
    
 
     track = [track] if isinstance(track, str) else track
-
     for t in track:
         steps, how_far = pytux.rollout(t, control, max_frames=1000, verbose=verbose)
         print(steps, how_far)
@@ -122,6 +121,7 @@ if __name__ == '__main__':
     pytux = PyTux()
     test_controller(pytux, **vars(parser.parse_args()))
     pytux.close()
+    
     """
 if __name__ == '__main__':
     from .utils import PyTux
