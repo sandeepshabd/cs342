@@ -1,85 +1,70 @@
 from .planner import Planner, save_model 
 import torch
-from torch import save
-from os import path
 import torch.utils.tensorboard as tb
 import numpy as np
 from .utils import load_data
 from . import dense_transforms
 
 def train(args):
-
+    from os import path
     model = Planner()
     train_logger, valid_logger = None, None
     if args.log_dir is not None:
         train_logger = tb.SummaryWriter(path.join(args.log_dir, 'train'))
+
+    """
+    Your code here, modify your HW4 code
+    Hint: Use the log function below to debug and visualize your model
+    """
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-5)
-    
-    import inspect
-    transform = eval('Compose([ColorJitter(0.9, 0.9, 0.9, 0.1), RandomHorizontalFlip(), ToTensor()])', {k: v for k, v in inspect.getmembers(dense_transforms) if inspect.isclass(v)})
-    train_loader = load_data('drive_data', num_workers=4, transform=transform)
-    
-    #loss_function = torch.nn.BCEWithLogitsLoss(reduction='none')
-    size_loss_function = torch.nn.MSELoss(reduction='mean')
-    
-    trainData(model, optimizer, size_loss_function, train_loader, device, args.continue_training, train_logger)
-
-
-def trainData(model, optimizer, loss_function, train_data_loader, device, continue_training, logger=None):
     model = model.to(device)
+    if args.continue_training:
+        model.load_state_dict(torch.load(path.join(path.dirname(path.abspath(__file__)), 'planner.th')))
 
-    if continue_training:
-        load_model_state(model, 'planner.th')
+    # optimizer = torch.optim.SGD(model.parameters(), lr=args.learning_rate, momentum=0.9, weight_decay=1e-5)
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=1e-5)
 
+    import inspect
+    transform = eval(args.transform, {k: v for k, v in inspect.getmembers(dense_transforms) if inspect.isclass(v)})
+    train_data = load_data('drive_data', num_workers=4, transform=transform)
+
+    det_loss = torch.nn.BCEWithLogitsLoss(reduction='none')
+    size_loss = torch.nn.MSELoss(reduction='mean')
 
     global_step = 0
-    for epoch in range(125):
+    for epoch in range(args.num_epoch):
         model.train()
         loss_vals = []
-
-        for img, gt_det in train_data_loader:
+        for img, gt_det in train_data:
             img, gt_det = img.to(device), gt_det.to(device)
 
+            size_w, _ = gt_det.max(dim=1, keepdim=True)
+
             det = model(img)
-            loss_val = loss_function(det, gt_det)
-
-            if logger is not None and global_step % 20 == 0:
-                log_metrics(logger, img, gt_det, det, loss_val, global_step)
-
+            loss_val = size_loss(det, gt_det)
+            #print(loss_val)
+            # Continuous version of focal loss
+            #p_det = torch.sigmoid(det * (1-2*gt_det))
+            #loss_val = (det_loss(det, gt_det)*p_det).mean() / p_det.mean()
+            #size_loss_val = (size_w * size_loss(size, gt_size)).mean() / size_w.mean()
+            #loss_val = det_loss_val + size_loss_val * args.size_weight
+            loss_vals.append(loss_val)
+            
+            if train_logger is not None and global_step % 25 == 0:
+                log(train_logger, img, gt_det, det, global_step)
+              
+            if train_logger is not None:
+                #train_logger.add_scalar('det_loss', det_loss_val, global_step)
+                #train_logger.add_scalar('size_loss', size_loss_val, global_step)
+                train_logger.add_scalar('loss', loss_val, global_step)
             optimizer.zero_grad()
             loss_val.backward()
             optimizer.step()
-            loss_vals.append(loss_val.item())
             global_step += 1
-
         avg_loss = sum(loss_vals) / len(loss_vals)
-        print(f'Average loss for epoch {epoch} = {avg_loss}')
-        save_model(model, 'planner.th')
-
-def load_model_state(model, model_path):
-    from os import path
-    model.load_state_dict(torch.load(path.join(path.dirname(path.abspath(__file__)), model_path)))
-
-def save_model(model, model_path):
-    from torch import save
-    from os import path
-    save(model.state_dict(), path.join(path.dirname(path.abspath(__file__)), model_path))
-
-def log_metrics(logger, img, gt_det, det, loss_val, global_step):
-    logger.add_images('images', img, global_step)
-    logger.add_images('ground_truth', gt_det, global_step)
-    logger.add_images('detection', det, global_step)
-    logger.add_scalar('loss', loss_val, global_step)
-
-
-def log_metrics(logger, img, gt_det, det, loss_val, global_step):
-    logger.add_images('images', img, global_step)
-    logger.add_images('ground_truth', gt_det, global_step)
-    logger.add_images('detection', det, global_step)
-    logger.add_scalar('loss', loss_val, global_step)
-    
+        print('avg loss for epoch',epoch,'=',avg_loss.item())
+        save_model(model)
 
 def log(logger, img, label, pred, global_step):
     """
@@ -104,8 +89,14 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--log_dir', default = '../logger/')
+    parser.add_argument('--log_dir')
     # Put custom arguments here
+    parser.add_argument('-n', '--num_epoch', type=int, default=120)
+    parser.add_argument('-lr', '--learning_rate', type=float, default=1e-3)
     parser.add_argument('-c', '--continue_training', action='store_true')
+    parser.add_argument('-t', '--transform',
+                        default='Compose([ColorJitter(0.9, 0.9, 0.9, 0.1), RandomHorizontalFlip(), ToTensor()])')
+    parser.add_argument('-w', '--size-weight', type=float, default=0.01)
+
     args = parser.parse_args()
     train(args)
