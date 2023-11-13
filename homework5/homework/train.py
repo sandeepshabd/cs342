@@ -1,3 +1,4 @@
+import datetime
 from .planner import Planner, save_model 
 import torch
 import torch.utils.tensorboard as tb
@@ -60,7 +61,11 @@ def train(args):
             global_step += 1
         avg_loss = sum(loss_vals) / len(loss_vals)
         
-        print('average loss for epoch',epoch,'=',avg_loss.item())
+        now = datetime.now()
+
+        current_time = now.strftime("%H:%M:%S")
+        print("Current Time =", current_time,' ,epoch=',epoch,' ,Avergae Loss=',avg_loss.item())
+
         save_model(model)
 
 def log(logger, img, label, pred, global_step):
