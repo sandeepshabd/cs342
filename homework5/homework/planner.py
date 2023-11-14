@@ -118,7 +118,7 @@ def test_planner(pytux, track, verbose=False):
     # Load model
     planner = load_model().eval()
 
-    for t in args.track:
+    for t in track:
         steps, how_far = pytux.rollout(t, control, planner=planner, max_frames=1000, verbose=verbose)
         print(steps, how_far)
     pytux.close()
