@@ -36,7 +36,7 @@ def train(args):
    
 
     global_step = 0
-    for epoch in range(126):
+    for epoch in range(54):
         model.train()
         loss_vals = []
         for img, gt_det in train_data:
