@@ -114,6 +114,16 @@ def load_model():
     r.load_state_dict(load(path.join(path.dirname(path.abspath(__file__)), 'planner.th'), map_location='cpu'))
     return r
 
+def test_planner(pytux, track, verbose=False):
+    # Load model
+    planner = load_model().eval()
+
+    for t in args.track:
+        steps, how_far = pytux.rollout(t, control, planner=planner, max_frames=1000, verbose=verbose)
+        print(steps, how_far)
+    pytux.close()
+    
+
 
 if __name__ == '__main__':
     from .controller import control
