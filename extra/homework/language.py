@@ -1,3 +1,4 @@
+import torch
 from .models import LanguageModel, AdjacentLanguageModel, Bigram, load_model
 from . import utils
 
@@ -48,7 +49,29 @@ def sample_random(model: LanguageModel, max_length: int = 100):
     :param max_length: The maximum sentence length
     :return: A string
     """
-    raise NotImplementedError('sample_random')
+    sentence = ''  # Initialize the sentence as an empty string
+    
+    for _ in range(max_length):
+        # Predict the log-probabilities of the next character using the current sentence
+        log_probs = model.predict_next(sentence)
+        
+        # Convert log probabilities to actual probabilities
+        probs = torch.exp(log_probs)
+        
+        # Sample a character from the probability distribution
+        char_index = torch.multinomial(probs, 1).item()
+        
+        # Assume we have a function utils.index_to_char to convert an index to a character
+        char = utils.vocab(char_index)
+        
+        # Append the sampled character to the sentence
+        sentence += char
+        
+        # Terminate if the period is reached
+        if char == '.':
+            break
+            
+    return sentence
 
 
 class TopNHeap:
@@ -91,7 +114,44 @@ def beam_search(model: LanguageModel, beam_size: int, n_results: int = 10, max_l
                                    This option favors longer strings.
     :return: A list of strings of size n_results
     """
-    raise NotImplementedError('beam_search')
+    beams = [("", 0)]
+
+    for _ in range(max_length):
+        candidates = []
+        
+        # Expand each beam
+        for sentence, log_likelihood in beams:
+            # Stop expanding this beam if it ends with a period
+            if sentence.endswith('.'):
+                candidates.append((sentence, log_likelihood))
+                continue
+
+            # Predict the next character's log-probabilities
+            log_probs_next = model.predict_next(sentence)
+
+            # Consider top `beam_size` next characters
+            topk_log_probs, topk_indices = torch.topk(log_probs_next, beam_size)
+
+            for log_prob, index in zip(topk_log_probs, topk_indices):
+                next_char = utils.vocab(index.item())
+                new_sentence = sentence + next_char
+                new_log_likelihood = log_likelihood + log_prob.item()
+                if average_log_likelihood:
+                    new_log_likelihood /= len(new_sentence)
+                candidates.append((new_sentence, new_log_likelihood))
+
+        # Keep top `beam_size` beams
+        beams = sorted(candidates, key=lambda x: x[1], reverse=True)[:beam_size]
+
+    # Pick the top `n_results` unique sentences
+    unique_sentences = set()
+    results = []
+    for sentence, _ in beams:
+        if sentence not in unique_sentences and len(results) < n_results:
+            results.append(sentence)
+            unique_sentences.add(sentence)
+
+    return results
 
 
 if __name__ == "__main__":
