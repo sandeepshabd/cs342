@@ -28,7 +28,7 @@ def log_likelihood(model: LanguageModel, some_text: str):
         # Assume we have a function utils.one_hot that converts a character to its one-hot encoding
         # and a function utils.char_to_index that returns the index of a character in the vocabulary
         actual_next_char = some_text[i]
-        char_index = utils.char_to_index(actual_next_char)
+        char_index = utils.one_hot(actual_next_char)
         
         # Get the log-probability for the actual next character
         log_prob_actual_next_char = log_probs_next_char[char_index]
