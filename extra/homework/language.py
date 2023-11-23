@@ -1,3 +1,4 @@
+import string
 import torch
 from .models import LanguageModel, AdjacentLanguageModel, Bigram, load_model
 from . import utils
@@ -15,12 +16,20 @@ def log_likelihood(model: LanguageModel, some_text: str):
     :param some_text:
     :return: float
     """
+    
+    all_probs = model.predict_all(some_text)
+    likelihood = 0
+    for i in range(len(some_text)):
+        likelihood += all_probs[utils.vocab.find(some_text[i]), i]
+    return likelihood
+"""
     # Initialize log-likelihood
     log_likelihood = 0.0
 
     # Iterate over the text to compute the sum of log-probabilities of the actual next characters
-    for i in range(len(some_text)):
+    for i in range(len(some_text)+1):
         # The substring up to the current character
+        print("i",i)
         substring = some_text[:i]
         
         # Predict the log-probabilities for the next character
@@ -36,7 +45,7 @@ def log_likelihood(model: LanguageModel, some_text: str):
 
     return log_likelihood.item()  # Convert from tensor to Python float
 
-
+"""
 
 def sample_random(model: LanguageModel, max_length: int = 100):
     """
@@ -50,7 +59,7 @@ def sample_random(model: LanguageModel, max_length: int = 100):
     :return: A string
     """
     sentence = ''  # Initialize the sentence as an empty string
-    
+    vocab = string.ascii_lowercase + ' .'
     for _ in range(max_length):
         # Predict the log-probabilities of the next character using the current sentence
         log_probs = model.predict_next(sentence)
@@ -62,7 +71,7 @@ def sample_random(model: LanguageModel, max_length: int = 100):
         char_index = torch.multinomial(probs, 1).item()
         
         # Assume we have a function utils.index_to_char to convert an index to a character
-        char = utils.vocab(char_index)
+        char = vocab[char_index]
         
         # Append the sampled character to the sentence
         sentence += char
@@ -114,44 +123,35 @@ def beam_search(model: LanguageModel, beam_size: int, n_results: int = 10, max_l
                                    This option favors longer strings.
     :return: A list of strings of size n_results
     """
-    beams = [("", 0)]
+    heap = TopNHeap(N=beam_size)
+    next_likes = model.predict_next('')
+    
+    for next_step, next_like in enumerate(next_likes):
+        element = ((next_like).item(), utils.vocab[next_step])
+        if element not in [el[1] for el in heap.elements]:
+            heap.add(element)
 
-    for _ in range(max_length):
-        candidates = []
-        
-        # Expand each beam
-        for sentence, log_likelihood in beams:
-            # Stop expanding this beam if it ends with a period
-            if sentence.endswith('.'):
-                candidates.append((sentence, log_likelihood))
+    for _ in range(max_length):        
+        for seq, score in heap.elements:
+            if score[-1] == '.':
                 continue
-
-            # Predict the next character's log-probabilities
-            log_probs_next = model.predict_next(sentence)
-
-            # Consider top `beam_size` next characters
-            topk_log_probs, topk_indices = torch.topk(log_probs_next, beam_size)
-
-            for log_prob, index in zip(topk_log_probs, topk_indices):
-                next_char = utils.vocab(index.item())
-                new_sentence = sentence + next_char
-                new_log_likelihood = log_likelihood + log_prob.item()
+            next_likes = model.predict_next(score[-1])
+            
+            
+            for next_step, next_like in enumerate(next_likes):
                 if average_log_likelihood:
-                    new_log_likelihood /= len(new_sentence)
-                candidates.append((new_sentence, new_log_likelihood))
+                    curr_len = len(score)
+                    avg_like = (seq*curr_len + next_like.item())/(curr_len + 1)
+                    element = (avg_like, score + utils.vocab[next_step])
+                else:
+                    element = (seq + next_like.item(), score + utils.vocab[next_step])            
+                if element[1] not in [el[1] for el in heap.elements]:
+                    heap.add(element)
 
-        # Keep top `beam_size` beams
-        beams = sorted(candidates, key=lambda x: x[1], reverse=True)[:beam_size]
+    sorted_heap = sorted(heap.elements, key=lambda x: x[0])[::-1]
+    output = [el[1] for el in sorted_heap[:n_results]]
+    return output
 
-    # Pick the top `n_results` unique sentences
-    unique_sentences = set()
-    results = []
-    for sentence, _ in beams:
-        if sentence not in unique_sentences and len(results) < n_results:
-            results.append(sentence)
-            unique_sentences.add(sentence)
-
-    return results
 
 
 if __name__ == "__main__":

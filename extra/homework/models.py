@@ -16,15 +16,7 @@ class LanguageModel(object):
         :return: torch.Tensor((len(utils.vocab), len(some_text)+1)) of log-probabilities
         """
 
-        log_probs = utils.one_hot(some_text)
-
-        # Mock prediction: fill the tensor with random log-probabilities
-        for i in range(len(some_text) + 1):
-            # Random probabilities normalized to sum to 1
-            probs = np.random.dirichlet(np.ones(len(string.ascii_lowercase + ' .')), size=1)
-            log_probs[:, i] = torch.log(torch.tensor(probs, dtype=torch.float32).squeeze())
-
-        return log_probs
+        raise NotImplementedError('Abstract function LanguageModel.predict_all')
 
     def predict_next(self, some_text):
         """
