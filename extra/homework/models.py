@@ -13,7 +13,22 @@ class LanguageModel(object):
         :param some_text: A string containing characters in utils.vocab, may be an empty string!
         :return: torch.Tensor((len(utils.vocab), len(some_text)+1)) of log-probabilities
         """
-        raise NotImplementedError('Abstract function LanguageModel.predict_all')
+
+        # Mock vocabulary
+        vocab = ['a', 'b', 'c', 'd', 'e']  # example vocabulary
+        vocab_size = len(vocab)
+
+        # Initialize a tensor to store log-probabilities
+        # The tensor shape is (vocab_size, len(some_text)+1)
+        log_probs = torch.zeros((vocab_size, len(some_text) + 1))
+
+        # Mock prediction: fill the tensor with random log-probabilities
+        for i in range(len(some_text) + 1):
+            # Random probabilities normalized to sum to 1
+            probs = np.random.dirichlet(np.ones(vocab_size), size=1)
+            log_probs[:, i] = torch.log(torch.tensor(probs, dtype=torch.float32).squeeze())
+
+        return log_probs
 
     def predict_next(self, some_text):
         """
