@@ -14,7 +14,30 @@ def log_likelihood(model: LanguageModel, some_text: str):
     :param some_text:
     :return: float
     """
-    raise NotImplementedError('log_likelihood')
+    # Initialize log-likelihood
+    log_likelihood = 0.0
+
+    # Iterate over the text to compute the sum of log-probabilities of the actual next characters
+    for i in range(len(some_text)):
+        # The substring up to the current character
+        substring = some_text[:i]
+        
+        # Predict the log-probabilities for the next character
+        log_probs_next_char = model.predict_next(substring)
+        
+        # Assume we have a function utils.one_hot that converts a character to its one-hot encoding
+        # and a function utils.char_to_index that returns the index of a character in the vocabulary
+        actual_next_char = some_text[i]
+        char_index = utils.char_to_index(actual_next_char)
+        
+        # Get the log-probability for the actual next character
+        log_prob_actual_next_char = log_probs_next_char[char_index]
+        
+        # Add this log-probability to the total log-likelihood
+        log_likelihood += log_prob_actual_next_char
+
+    return log_likelihood.item()  # Convert from tensor to Python float
+
 
 
 def sample_random(model: LanguageModel, max_length: int = 100):
