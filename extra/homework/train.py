@@ -19,9 +19,12 @@ def train(args):
     Hint: SGD might need a fairly high learning rate to work well here
 
     """
-    optimizer = torch.optim.SGD(model.parameters(), lr=args.learning_rate, momentum=args.momentum, weight_decay=args.weight_decay)
+    #optimizer = torch.optim.SGD(model.parameters(), lr=args.learning_rate, momentum=args.momentum, weight_decay=args.weight_decay)
 
     loss = torch.nn.CrossEntropyLoss()
+    
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=1e-5)
+    #loss = torch.nn.BCEWithLogitsLoss().to(device)
 
     print("Loading data...")
     train_data = SpeechDataset('data/train.txt', transform=one_hot);
@@ -74,8 +77,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--log_dir')
-    parser.add_argument('-n', '--num_epoch', type=int, default=10000)
-    parser.add_argument('-lr', '--learning_rate', type=float, default=.1)
+    parser.add_argument('-n', '--num_epoch', type=int, default=1800)
+    parser.add_argument('-lr', '--learning_rate', type=float, default=1e-4)
     parser.add_argument('-mo', '--momentum', type=float, default=.9)
     parser.add_argument('-wd', '--weight_decay', type=float, default=1e-5)
     parser.add_argument('-bs', '--batch_size', type=float, default=128)

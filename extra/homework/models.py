@@ -76,21 +76,28 @@ class TCN(torch.nn.Module, LanguageModel):
             :param dilation: Conv1d parameter
             """
             super().__init__()
-            self.net = torch.nn.Sequential(
-                torch.nn.ConstantPad1d(((kernel_size-1)*dilation,0), 0),
-                torch.nn.utils.weight_norm(torch.nn.Conv1d(in_channels, out_channels, kernel_size, dilation=dilation)),
-                torch.nn.ReLU(),
-                torch.nn.Dropout(dropout),
-                torch.nn.ConstantPad1d(((kernel_size-1)*dilation,0), 0),
-                torch.nn.utils.weight_norm(torch.nn.Conv1d(out_channels, out_channels, kernel_size, dilation=dilation)),
-                torch.nn.ReLU(),
-                torch.nn.Dropout(dropout),
+            self.conv1 = self._create_causal_conv(in_channels, out_channels, kernel_size, dilation, dropout)
+            self.conv2 = self._create_causal_conv(out_channels, out_channels, kernel_size, dilation, dropout)
+
+            # Downsample if necessary
+            self.down = nn.Conv1d(in_channels, out_channels, 1) if downsample else None
+        def _create_causal_conv(self, in_channels, out_channels, kernel_size, dilation, dropout):
+            """
+            Create a single causal convolution layer followed by ReLU and dropout.
+            """
+            padding = (kernel_size - 1) * dilation  # Padding for causality
+            return nn.Sequential(
+                nn.ConstantPad1d((padding, 0), 0),
+                nn.utils.weight_norm(nn.Conv1d(in_channels, out_channels, kernel_size, dilation=dilation)),
+                nn.ReLU(),
+                nn.Dropout(dropout)
             )
-            self.down = torch.nn.Conv1d(in_channels, out_channels, 1)
+
 
         def forward(self, x):
-            out = self.net(x)
-            return out + (x if self.down is None else self.down(x))
+            out = self.conv2(self.conv1(x))
+            residual = x if self.down is None else self.down(x)
+            return out + residual
 
     #def __init__(self):
         """
@@ -100,56 +107,37 @@ class TCN(torch.nn.Module, LanguageModel):
         Hint: The probability of the first character should be a parameter
         use torch.nn.Parameter to explicitly create it.
         """
-    def __init__(self, layers=[50]*8, kernel_size=3):
-
+    def __init__(self, num_layers=8, num_channels=50, vocab_size=28, kernel_size=3, dropout=0.05):
         super().__init__()
-        self.softmax = torch.nn.LogSoftmax(dim=1)
-
-        L = []
-        in_channels = 28
+        self.layers = nn.ModuleList()
+        self.first_char = nn.Parameter(torch.rand(vocab_size, 1), requires_grad=True)
+        
+        in_channels = vocab_size
         dilation_size = 1
-        downsample = True
-        for i in range(len(layers)):
-            L += [self.CausalConv1dBlock(in_channels, layers[i], kernel_size, dilation=dilation_size, dropout=0.05, downsample=True)]
-            downsample = not downsample
-            dilation_size = 2 ** i
-            in_channels = layers[i]
-
-
-        self.network = torch.nn.Sequential(*L)
-        self.classifier = torch.nn.Conv1d(50, 28, 1)
-        self.first_char = torch.nn.Parameter(torch.rand(28, 1), requires_grad=True)
+        for _ in range(num_layers):
+            self.layers.append(self.CausalConv1dBlock(in_channels, num_channels, kernel_size, dilation_size, dropout))
+            dilation_size *= 2
+            in_channels = num_channels
+        
+        self.classifier = nn.Conv1d(num_channels, vocab_size, 1)
+        self.log_softmax = nn.LogSoftmax(dim=1)
 
     def forward(self, x):
-        """
-        Your code here
-        Return the logit for the next character for prediction for any substring of x
+        batch_first_char = self.first_char.expand(x.size(0), -1, -1)
+        if x.shape[2] == 0:
+            return self.log_softmax(batch_first_char)
 
-        @x: torch.Tensor((B, vocab_size, L)) a batch of one-hot encodings
-        @return torch.Tensor((B, vocab_size, L+1)) a batch of log-likelihoods or logits
-        """
-        stacks = []
-        for _ in range(x.shape[0]):
-            stacks.append(self.first_char)
-        batch = torch.stack(stacks, dim=0)
-
-        if (x.shape[2] == 0):
-            return self.softmax(batch)
-
-        out = self.classifier(self.network(x))
-        out = torch.cat([batch, out], dim=2)
-        return out
+        out = x
+        for layer in self.layers:
+            out = layer(out)
+        out = self.classifier(out)
+        out = torch.cat([batch_first_char, out], dim=2)
+        return self.log_softmax(out)
 
     def predict_all(self, some_text):
-        """
-        Your code here
-
-        @some_text: a string
-        @return torch.Tensor((vocab_size, len(some_text)+1)) of log-likelihoods (not logits!)
-        """
         one_hot = utils.one_hot(some_text)
-        p = self.softmax(self.forward(one_hot[None]))
-        return p.view(one_hot.size(0), one_hot.size(1) + 1)
+        p = self.forward(one_hot.unsqueeze(0))
+        return p.squeeze(0)
 
 
 def save_model(model):
