@@ -78,10 +78,10 @@ if __name__ == '__main__':
 
     parser.add_argument('--log_dir')
     parser.add_argument('-n', '--num_epoch', type=int, default=1800)
-    parser.add_argument('-lr', '--learning_rate', type=float, default=1e-4)
+    parser.add_argument('-lr', '--learning_rate', type=float, default=1e-3)
     parser.add_argument('-mo', '--momentum', type=float, default=.9)
     parser.add_argument('-wd', '--weight_decay', type=float, default=1e-5)
-    parser.add_argument('-bs', '--batch_size', type=float, default=128)
+    parser.add_argument('-bs', '--batch_size', type=float, default=100)
 
     args = parser.parse_args()
     train(args)
