@@ -65,7 +65,7 @@ class AdjacentLanguageModel(LanguageModel):
 
 class TCN(torch.nn.Module, LanguageModel):
     class CausalConv1dBlock(torch.nn.Module):
-        def __init__(self, in_channels, out_channels, kernel_size=3, dilation=1):
+        def __init__(self, in_channels, out_channels, kernel_size, dilation, dropout, downsample=True):
             """
             Your code here.
             Implement a Causal convolution followed by a non-linearity (e.g. ReLU).
@@ -76,20 +76,21 @@ class TCN(torch.nn.Module, LanguageModel):
             :param dilation: Conv1d parameter
             """
             super().__init__()
-            self.padding = (kernel_size - 1) * dilation
-            self.conv1 = nn.Conv1d(in_channels, out_channels, kernel_size, 
-                                   padding=self.padding, dilation=dilation)
-            self.relu = nn.ReLU()
-            self.conv2 = nn.Conv1d(out_channels, out_channels, kernel_size, 
-                                   padding=self.padding, dilation=dilation)
-            self.residual = nn.Conv1d(in_channels, out_channels, 1) if in_channels != out_channels else None
-
+            self.net = torch.nn.Sequential(
+                torch.nn.ConstantPad1d(((kernel_size-1)*dilation,0), 0),
+                torch.nn.utils.weight_norm(torch.nn.Conv1d(in_channels, out_channels, kernel_size, dilation=dilation)),
+                torch.nn.ReLU(),
+                torch.nn.Dropout(dropout),
+                torch.nn.ConstantPad1d(((kernel_size-1)*dilation,0), 0),
+                torch.nn.utils.weight_norm(torch.nn.Conv1d(out_channels, out_channels, kernel_size, dilation=dilation)),
+                torch.nn.ReLU(),
+                torch.nn.Dropout(dropout),
+            )
+            self.down = torch.nn.Conv1d(in_channels, out_channels, 1)
 
         def forward(self, x):
-            out = self.relu(self.conv1(x))
-            out = self.conv2(out)[:, :, :-self.padding]  # Remove extra padding for causality
-            residual = x if self.residual is None else self.residual(x)
-            return self.relu(out + residual[:, :, :out.size(2)])
+            out = self.net(x)
+            return out + (x if self.down is None else self.down(x))
 
     #def __init__(self):
         """
@@ -99,18 +100,25 @@ class TCN(torch.nn.Module, LanguageModel):
         Hint: The probability of the first character should be a parameter
         use torch.nn.Parameter to explicitly create it.
         """
-    def __init__(self, vocab_size, num_channels, num_blocks=2, kernel_size=3, dilation_factor=1):
+    def __init__(self, layers=[50]*8, kernel_size=3):
 
         super().__init__()
-        layers = []
-        for i in range(num_blocks):
-            dilation = dilation_factor ** i
-            in_channels = vocab_size if i == 0 else num_channels
-            layers.append(self.CausalConv1dBlock(in_channels, num_channels, kernel_size, dilation))
-        
-        self.tcn = nn.Sequential(*layers)
-        self.first_char_prob = nn.Parameter(torch.randn(vocab_size))
-        self.output_layer = nn.Linear(num_channels, vocab_size)
+        self.softmax = torch.nn.LogSoftmax(dim=1)
+
+        L = []
+        in_channels = 28
+        dilation_size = 1
+        downsample = True
+        for i in range(len(layers)):
+            L += [self.CausalConv1dBlock(in_channels, layers[i], kernel_size, dilation=dilation_size, dropout=0.05, downsample=True)]
+            downsample = not downsample
+            dilation_size = 2 ** i
+            in_channels = layers[i]
+
+
+        self.network = torch.nn.Sequential(*L)
+        self.classifier = torch.nn.Conv1d(50, 28, 1)
+        self.first_char = torch.nn.Parameter(torch.rand(28, 1), requires_grad=True)
 
     def forward(self, x):
         """
@@ -120,9 +128,16 @@ class TCN(torch.nn.Module, LanguageModel):
         @x: torch.Tensor((B, vocab_size, L)) a batch of one-hot encodings
         @return torch.Tensor((B, vocab_size, L+1)) a batch of log-likelihoods or logits
         """
-        out = self.tcn(x)
-        out = self.output_layer(out.transpose(1, 2))
-        out = F.pad(out, (1, 0), "constant", 0)  # Shift for predicting next character
+        stacks = []
+        for _ in range(x.shape[0]):
+            stacks.append(self.first_char)
+        batch = torch.stack(stacks, dim=0)
+
+        if (x.shape[2] == 0):
+            return self.softmax(batch)
+
+        out = self.classifier(self.network(x))
+        out = torch.cat([batch, out], dim=2)
         return out
 
     def predict_all(self, some_text):
@@ -132,9 +147,9 @@ class TCN(torch.nn.Module, LanguageModel):
         @some_text: a string
         @return torch.Tensor((vocab_size, len(some_text)+1)) of log-likelihoods (not logits!)
         """
-        x = self.text_to_one_hot(some_text)
-        logits = self.forward(x)
-        return F.log_softmax(logits, dim=-1)
+        one_hot = utils.one_hot(some_text)
+        p = self.softmax(self.forward(one_hot[None]))
+        return p.view(one_hot.size(0), one_hot.size(1) + 1)
 
 
 def save_model(model):
