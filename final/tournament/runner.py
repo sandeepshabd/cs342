@@ -288,7 +288,7 @@ if __name__ == '__main__':
     parser.add_argument('team2', help="Python module name or `AI` for AI players.")
     args = parser.parse_args()
 
-    logging.basicConfig(level=environ.get('LOGLEVEL', 'WARNING').upper())
+    logging.basicConfig(level=environ.get('LOGLEVEL', 'DEBUG').upper())
 
     if args.parallel is None or remote.ray is None:
         # Create the teams
