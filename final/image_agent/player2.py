@@ -232,7 +232,16 @@ class Team:
             aim_point_image_Player1 = self.to_screen_coordinates(x, proj1, view1) 
             aim_point_image_Player2 = self.to_screen_coordinates(x, proj2, view2)
       
+    def extract_kart_data(self,player):
+        Kart_A_front = player['kart']['front']
+        Kart_A_location = player['kart']['location']
+        Kart_A_vel = player['kart']['velocity']
+        pos_A = self.to_numpy(Kart_A_location)
+        front_A =self.to_numpy(Kart_A_front)
+        return 
       
+      
+        
     def act(self, player_state, player_image):
         """
         This function is called once per timestep. You're given a list of player_states and images.
@@ -277,7 +286,7 @@ class Team:
         if self.planner:
             image1, image2 = [TF.to_tensor(img)[None] for img in player_image]
             aim_point_image_Player1, aim_point_image_Player2 = self.handle_planner(image1, image2, player_state) # Implement this function separately
- 
+
         # Update frame and possibly debug stats
         self.frame += 1
 
