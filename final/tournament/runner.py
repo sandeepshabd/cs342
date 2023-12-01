@@ -146,7 +146,7 @@ class Match:
     
     def __init__(self, use_graphics=False, logging_level=None):
         # DO this here so things work out with ray
-        
+        pystk.clean()
         assert Match._singleton is None, "Cannot create more than one pytux object"
         Match._singleton = self
         
@@ -206,13 +206,15 @@ class Match:
         _, error, t2 = self._g(self._r(team2.info)())
         if error:
             raise MatchException([3, 0], 'crash during {}: {}'.format(where, error), 'other team crashed')
-
+        
+        print(t1)
+        print(timeout)
         logging.debug('timeout {} <? {} {}'.format(timeout, t1, t2))
-        return t1 < timeout, t2 < timeout
+        return t1 < timeout[0], t2 < timeout[1]
 
     def run(self, team1, team2, num_player=1, max_frames=MAX_FRAMES, max_score=3, record_fn=None, timeout=1e10,
             initial_ball_location=[0, 0], initial_ball_velocity=[0, 0], verbose=True, data_callback=None):
-        RaceConfig = self._pystk.RaceConfig
+        RaceConfig = pystk.RaceConfig(num_kart=1, laps=1, track=TRACK_NAME)
 
         logging.info('Creating teams')
         
@@ -435,7 +437,7 @@ def main(pytux, team1='AI', team2='AI', track=['tux'], output=DATASET_PATH, num_
         match = Match(use_graphics=team1.agent_type == 'image' or team2.agent_type == 'image')
         try:
             result = match.run(team1, team2, num_players, num_frames, max_score,
-                               ball_location, ball_velocity,record_fn=recorder,  data_callback=collect)
+                               ball_location, ball_velocity,recorder,  data_callback=collect)
         except MatchException as e:
             print('Match failed', e.score)
             print(' T1:', e.msg1)
