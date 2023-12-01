@@ -1,12 +1,36 @@
+import os
 import logging
 import numpy as np
 from collections import namedtuple
+import pystk
+from os import makedirs
 
 TRACK_NAME = 'icy_soccer_field'
 MAX_FRAMES = 1000
 
+DATASET_PATH = 'drive_data'
+ON_COLAB = os.environ.get('ON_COLAB', False)
+COLAB_IMAGES = list()
+
+print(ON_COLAB)
+
+
+
 RunnerInfo = namedtuple('RunnerInfo', ['agent_type', 'error', 'total_act_time'])
 
+def collect(_, im, pt,t):
+    from PIL import Image
+    from os import path
+    fn = path.join(output, t + '_%05d' % id)
+    Image.fromarray(im).save(fn + '.png')
+    with open(fn + '.csv', 'w') as f:
+        f.write('%0.1f,%0.1f' % tuple(pt))
+
+def show_on_colab():
+    from moviepy.editor import ImageSequenceClip
+    from IPython.display import display
+
+    display(ImageSequenceClip(COLAB_IMAGES, fps=15).ipython_display(width=512, autoplay=True, loop=True, maxduration=120))
 
 def to_native(o):
     # Super obnoxious way to hide pystk
@@ -112,9 +136,27 @@ class Match:
     """
         Do not create more than one match per process (use ray to create more)
     """
+    
+    @staticmethod
+    def _to_image(x, proj, view):
+        p = proj @ view @ np.array(list(x) + [1])
+        return np.clip(np.array([p[0] / p[-1], -p[1] / p[-1]]), -1, 1)
+    _singleton = None
+    
+    
     def __init__(self, use_graphics=False, logging_level=None):
         # DO this here so things work out with ray
-        import pystk
+        
+        assert Match._singleton is None, "Cannot create more than one pytux object"
+        Match._singleton = self
+        
+        self.config = pystk.GraphicsConfig.hd()
+        self.config.screen_width = 128
+        self.config.screen_height = 96
+        pystk.init(self.config)
+        self.k = None
+        
+        """
         self._pystk = pystk
         if logging_level is not None:
             logging.basicConfig(level=logging_level)
@@ -129,6 +171,7 @@ class Match:
             graphics_config = self._pystk.GraphicsConfig.none()
 
         self._pystk.init(graphics_config)
+        """
 
     def __del__(self):
         if hasattr(self, '_pystk') and self._pystk is not None and self._pystk.clean is not None:  # Don't ask why...
@@ -168,10 +211,17 @@ class Match:
         return t1 < timeout, t2 < timeout
 
     def run(self, team1, team2, num_player=1, max_frames=MAX_FRAMES, max_score=3, record_fn=None, timeout=1e10,
-            initial_ball_location=[0, 0], initial_ball_velocity=[0, 0], verbose=False):
+            initial_ball_location=[0, 0], initial_ball_velocity=[0, 0], verbose=True, data_callback=None):
         RaceConfig = self._pystk.RaceConfig
 
         logging.info('Creating teams')
+        
+        if verbose and not ON_COLAB:
+            import matplotlib.pyplot as plt
+            fig, ax = plt.subplots(1, 1)
+        elif verbose and ON_COLAB:
+            global COLAB_IMAGES
+            COLAB_IMAGES = list()
 
         # Start a new match
         t1_cars = self._g(self._r(team1.new_match)(0, num_player)) or ['tux']
@@ -200,6 +250,8 @@ class Match:
         race = self._pystk.Race(race_config)
         race.start()
         race.step()
+        
+
 
         state = self._pystk.WorldState()
         state.update()
@@ -268,7 +320,129 @@ class Match:
     def wait(self, x):
         return x
 
+def main(pytux, team1='AI', team2='AI', track=['tux'], output=DATASET_PATH, num_players=2,max_score =3,
+         n_images=10000, steps_per_track=20000, aim_noise=0.1,num_frames =1200, ball_location =[0,0], ball_velocity=[0,0],
+         vel_noise=5, verbose=False, parallel=None, record_video = None, record_state=None):
 
+    from os import makedirs
+
+    try:
+        makedirs(output)
+    except OSError:
+        pass
+
+    track = [track] if isinstance(track, str) else track
+
+    for t in track:
+        n, images_per_track = 0, n_images // len(track)
+
+        def collect(_, im, pt):
+            from PIL import Image
+            from os import path
+            nonlocal n
+            id = n if n < images_per_track else np.random.randint(0, n + 1)
+            if id < images_per_track:
+                fn = path.join(output, t + '_%05d' % id)
+                Image.fromarray(im).save(fn + '.png')
+                with open(fn + '.csv', 'w') as f:
+                    f.write('%0.1f,%0.1f' % tuple(pt))
+            n += 1
+        """
+        # Use 0 noise for the first round
+        _aim_noise, _vel_noise = 0, 0
+
+        while n < steps_per_track:
+            def noisy_control(aim_pt, vel):
+                return control(
+                        aim_pt + np.random.randn(*aim_pt.shape) * _aim_noise,
+                        vel + np.random.randn() * _vel_noise)
+
+            steps, how_far = pytux.rollout(t, noisy_control, max_frames=1000, verbose=verbose, data_callback=collect)
+            print(steps, how_far)
+
+            # Add noise after the first round
+            _aim_noise, _vel_noise = aim_noise, vel_noise
+            
+        """
+            
+            
+    logging.basicConfig(level=environ.get('LOGLEVEL', 'WARNING').upper())
+    
+
+
+    if parallel is None or remote.ray is None:
+        # Create the teams
+        team1 = AIRunner() if args.team1 == 'AI' else TeamRunner(team1)
+        team2 = AIRunner() if args.team2 == 'AI' else TeamRunner(team2)
+
+        # What should we record?
+        recorder = None
+        if record_video:
+            recorder = recorder & utils.VideoRecorder(args.record_video)
+
+        if record_state:
+            recorder = recorder & utils.StateRecorder(args.record_state)
+
+        # Start the match
+        match = Match(use_graphics=team1.agent_type == 'image' or team2.agent_type == 'image')
+        try:
+            result = match.run(team1, team2, num_players, num_frames, max_score,
+                               ball_location, ball_velocity,record_fn=recorder,  data_callback=collect)
+        except MatchException as e:
+            print('Match failed', e.score)
+            print(' T1:', e.msg1)
+            print(' T2:', e.msg2)
+
+        print('Match results', result)
+
+    else:
+        # Fire up ray
+        remote.init(logging_level=getattr(logging, environ.get('LOGLEVEL', 'WARNING').upper()), configure_logging=True,
+                    log_to_driver=True, include_dashboard=False)
+
+        # Create the teams
+        team1 = AIRunner() if args.team1 == 'AI' else remote.RayTeamRunner.remote(team1)
+        team2 = AIRunner() if args.team2 == 'AI' else remote.RayTeamRunner.remote(team2)
+        team1_type, *_ = team1.info() if team1 == 'AI' else remote.get(team1.info.remote())
+        team2_type, *_ = team2.info() if team2 == 'AI' else remote.get(team2.info.remote())
+
+        # What should we record?
+        assert args.record_state is None or args.record_video is None, "Cannot record both video and state in parallel mode"
+
+        # Start the match
+        results = []
+        for i in range(args.parallel):
+            recorder = None
+            if args.record_video:
+                ext = Path(args.record_video).suffix
+                recorder = remote.RayVideoRecorder.remote(record_video.replace(ext, f'.{i}{ext}'))
+            elif args.record_state:
+                ext = Path(args.record_state).suffix
+                recorder = remote.RayStateRecorder.remote(record_state.replace(ext, f'.{i}{ext}'))
+
+            match = remote.RayMatch.remote(logging_level=getattr(logging, environ.get('LOGLEVEL', 'WARNING').upper()),
+                                           use_graphics=team1_type == 'image' or team2_type == 'image')
+            result = match.run.remote(team1, team2, args.num_players, num_frames, max_score=args.max_score,
+                                      initial_ball_location=args.ball_location,
+                                      initial_ball_velocity=args.ball_velocity,
+                                      record_fn=recorder)
+            results.append(result)
+
+        for result in results:
+            try:
+                result = remote.get(result)
+            except (remote.RayMatchException, MatchException) as e:
+                print('Match failed', e.score)
+                print(' T1:', e.msg1)
+                print(' T2:', e.msg2)
+
+            print('Match results', result)
+
+
+
+
+
+#-----------------------------------------------------------
 if __name__ == '__main__':
     from argparse import ArgumentParser
     from pathlib import Path
@@ -289,6 +463,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     logging.basicConfig(level=environ.get('LOGLEVEL', 'WARNING').upper())
+    
+
 
     if args.parallel is None or remote.ray is None:
         # Create the teams
