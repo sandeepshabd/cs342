@@ -148,7 +148,7 @@ class Match:
         # DO this here so things work out with ray
         self._pystk = pystk
         self._use_graphics = use_graphics
-        #self._pystk.clean()
+        self._pystk.clean()
         if( Match._singleton is None):
           Match._singleton = self
           self.isRaceRunning = False
@@ -211,8 +211,8 @@ class Match:
         if error:
             raise MatchException([3, 0], 'crash during {}: {}'.format(where, error), 'other team crashed')
         
-        print(t1)
-        print(timeout)
+       
+        
         logging.debug('timeout {} <? {} {}'.format(timeout, t1, t2))
         return t1 < timeout[0], t2 < timeout[1]
 
@@ -275,7 +275,7 @@ class Match:
         state.set_ball_location((initial_ball_location[0], 1, initial_ball_location[1]),
                                 (initial_ball_velocity[0], 0, initial_ball_velocity[1]))
         
-        kart = state.players[0].kart
+        
 
         for it in range(max_frames):
             logging.debug('iteration {} / {}'.format(it, MAX_FRAMES))
@@ -322,8 +322,9 @@ class Match:
                 a2 = team2_actions[i] if team2_actions is not None and i < len(team2_actions) else {}
                 actions.append(a1)
                 actions.append(a2)
-            
-            
+            print('players')
+            print(state.players)
+            kart = state.players[0].kart
             proj = np.array(state.players[0].camera.projection).T
             view = np.array(state.players[0].camera.view).T
 
