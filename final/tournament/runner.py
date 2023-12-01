@@ -247,7 +247,7 @@ class Match:
         for i in range(num_player):
             race_config.players.append(self._make_config(0, hasattr(team1, 'is_ai') and team1.is_ai, t1_cars[i % len(t1_cars)]))
             race_config.players.append(self._make_config(1, hasattr(team2, 'is_ai') and team2.is_ai, t2_cars[i % len(t2_cars)]))
-        kart = state.players[0].kart
+        
         # Start the match
         logging.info('Starting race')
         race = self._pystk.Race(race_config)
@@ -260,6 +260,8 @@ class Match:
         state.update()
         state.set_ball_location((initial_ball_location[0], 1, initial_ball_location[1]),
                                 (initial_ball_velocity[0], 0, initial_ball_velocity[1]))
+        
+        kart = state.players[0].kart
 
         for it in range(max_frames):
             logging.debug('iteration {} / {}'.format(it, MAX_FRAMES))
