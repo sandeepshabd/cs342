@@ -312,6 +312,35 @@ class Match:
             if record_fn:
                 self._r(record_fn)(team1_state, team2_state, soccer_state=soccer_state, actions=actions,
                                    team1_images=team1_images, team2_images=team2_images)
+                
+            if verbose and not ON_COLAB:
+                ax.clear()
+                ax.imshow(self.k.render_data[0].image)
+                WH2 = np.array([self.config.screen_width, self.config.screen_height]) / 2
+                ax.add_artist(plt.Circle(WH2*(1+self._to_image(kart.location, proj, view)), 2, ec='b', fill=False, lw=1.5))
+                ax.add_artist(plt.Circle(WH2*(1+self._to_image(aim_point_world, proj, view)), 2, ec='r', fill=False, lw=1.5))
+                """
+                if planner:
+                    ap = self._point_on_track(kart.distance_down_track + TRACK_OFFSET, track)
+                    ax.add_artist(plt.Circle(WH2*(1+aim_point_image), 2, ec='g', fill=False, lw=1.5))
+                plt.pause(1e-3)
+                """
+            elif verbose and ON_COLAB:
+                from PIL import Image, ImageDraw
+                image = Image.fromarray(self.k.render_data[0].image)
+                draw = ImageDraw.Draw(image)
+
+                WH2 = np.array([self.config.screen_width, self.config.screen_height]) / 2
+
+                p = (aim_point_image + 1) * WH2
+                draw.ellipse((p[0] - 2, p[1] - 2, p[0]+2, p[1]+2), fill=(255, 0, 0))
+                """
+                if planner:
+                    p = (aim_point + 1) * WH2
+                    draw.ellipse((p[0] - 2, p[1] - 2, p[0]+2, p[1]+2), fill=(0, 255, 0))
+                """
+
+                COLAB_IMAGES.append(np.array(image))
 
             logging.debug('  race.step  [score = {}]'.format(state.soccer.score))
             if (not race.step([self._pystk.Action(**a) for a in actions]) and num_player) or sum(state.soccer.score) >= max_score:
