@@ -358,6 +358,15 @@ class Match:
 
     def wait(self, x):
         return x
+    
+    def close(self):
+        """
+        Call this function, once you're done with PyTux
+        """
+        if self.k is not None:
+            self.k.stop()
+            del self.k
+        pystk.clean()
 
 def main(pytux, team1='AI', team2='AI', track=['tux'], output=DATASET_PATH, num_players=2,max_score =3,
          n_images=10000, steps_per_track=20000, aim_noise=0.1,num_frames =1200, ball_location =[0,0], ball_velocity=[0,0],
@@ -476,6 +485,7 @@ def main(pytux, team1='AI', team2='AI', track=['tux'], output=DATASET_PATH, num_
                 print(' T2:', e.msg2)
 
             print('Match results', result)
+    match.close()
 
 
 
@@ -573,3 +583,5 @@ if __name__ == '__main__':
                 print(' T2:', e.msg2)
 
             print('Match results', result)
+            
+        match.close()
