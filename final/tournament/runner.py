@@ -411,16 +411,16 @@ def main(pytux, team1='AI', team2='AI', track=['tux'], output=DATASET_PATH, num_
 
     if parallel is None or remote.ray is None:
         # Create the teams
-        team1 = AIRunner() if args.team1 == 'AI' else TeamRunner(team1)
-        team2 = AIRunner() if args.team2 == 'AI' else TeamRunner(team2)
+        team1 = AIRunner() if team1 == 'AI' else TeamRunner(team1)
+        team2 = AIRunner() if team2 == 'AI' else TeamRunner(team2)
 
         # What should we record?
         recorder = None
         if record_video:
-            recorder = recorder & utils.VideoRecorder(args.record_video)
+            recorder = recorder & utils.VideoRecorder(record_video)
 
         if record_state:
-            recorder = recorder & utils.StateRecorder(args.record_state)
+            recorder = recorder & utils.StateRecorder(record_state)
 
         # Start the match
         match = Match(use_graphics=team1.agent_type == 'image' or team2.agent_type == 'image')
@@ -440,30 +440,30 @@ def main(pytux, team1='AI', team2='AI', track=['tux'], output=DATASET_PATH, num_
                     log_to_driver=True, include_dashboard=False)
 
         # Create the teams
-        team1 = AIRunner() if args.team1 == 'AI' else remote.RayTeamRunner.remote(team1)
-        team2 = AIRunner() if args.team2 == 'AI' else remote.RayTeamRunner.remote(team2)
+        team1 = AIRunner() if team1 == 'AI' else remote.RayTeamRunner.remote(team1)
+        team2 = AIRunner() if team2 == 'AI' else remote.RayTeamRunner.remote(team2)
         team1_type, *_ = team1.info() if team1 == 'AI' else remote.get(team1.info.remote())
         team2_type, *_ = team2.info() if team2 == 'AI' else remote.get(team2.info.remote())
 
         # What should we record?
-        assert args.record_state is None or args.record_video is None, "Cannot record both video and state in parallel mode"
+        assert args.record_state is None or record_video is None, "Cannot record both video and state in parallel mode"
 
         # Start the match
         results = []
-        for i in range(args.parallel):
+        for i in range(parallel):
             recorder = None
-            if args.record_video:
-                ext = Path(args.record_video).suffix
+            if record_video:
+                ext = Path(record_video).suffix
                 recorder = remote.RayVideoRecorder.remote(record_video.replace(ext, f'.{i}{ext}'))
-            elif args.record_state:
-                ext = Path(args.record_state).suffix
+            elif record_state:
+                ext = Path(record_state).suffix
                 recorder = remote.RayStateRecorder.remote(record_state.replace(ext, f'.{i}{ext}'))
 
             match = remote.RayMatch.remote(logging_level=getattr(logging, environ.get('LOGLEVEL', 'WARNING').upper()),
                                            use_graphics=team1_type == 'image' or team2_type == 'image')
-            result = match.run.remote(team1, team2, args.num_players, num_frames, max_score=args.max_score,
-                                      initial_ball_location=args.ball_location,
-                                      initial_ball_velocity=args.ball_velocity,
+            result = match.run.remote(team1, team2, args.num_players, num_frames, max_score,
+                                      ball_location,
+                                      ball_velocity,
                                       record_fn=recorder)
             results.append(result)
 
