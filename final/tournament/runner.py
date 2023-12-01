@@ -7,6 +7,7 @@ from os import makedirs
 
 TRACK_NAME = 'icy_soccer_field'
 MAX_FRAMES = 1000
+TRACK_OFFSET = 15
 
 DATASET_PATH = 'drive_data'
 ON_COLAB = os.environ.get('ON_COLAB', False)
@@ -18,13 +19,7 @@ print(ON_COLAB)
 
 RunnerInfo = namedtuple('RunnerInfo', ['agent_type', 'error', 'total_act_time'])
 
-def collect(_, im, pt,t):
-    from PIL import Image
-    from os import path
-    fn = path.join(output, t + '_%05d' % id)
-    Image.fromarray(im).save(fn + '.png')
-    with open(fn + '.csv', 'w') as f:
-        f.write('%0.1f,%0.1f' % tuple(pt))
+
 
 def show_on_colab():
     from moviepy.editor import ImageSequenceClip
@@ -244,7 +239,7 @@ class Match:
         for i in range(num_player):
             race_config.players.append(self._make_config(0, hasattr(team1, 'is_ai') and team1.is_ai, t1_cars[i % len(t1_cars)]))
             race_config.players.append(self._make_config(1, hasattr(team2, 'is_ai') and team2.is_ai, t2_cars[i % len(t2_cars)]))
-
+        kart = state.players[0].kart
         # Start the match
         logging.info('Starting race')
         race = self._pystk.Race(race_config)
@@ -303,6 +298,16 @@ class Match:
                 a2 = team2_actions[i] if team2_actions is not None and i < len(team2_actions) else {}
                 actions.append(a1)
                 actions.append(a2)
+            
+            
+            proj = np.array(state.players[0].camera.projection).T
+            view = np.array(state.players[0].camera.view).T
+
+            aim_point_world = self._point_on_track(kart.distance_down_track+TRACK_OFFSET, TRACK_NAME)
+            aim_point_image = self._to_image(aim_point_world, proj, view)
+             
+            if data_callback is not None:
+                data_callback(it, np.array(self.k.render_data[0].image), aim_point_image)
 
             if record_fn:
                 self._r(record_fn)(team1_state, team2_state, soccer_state=soccer_state, actions=actions,
