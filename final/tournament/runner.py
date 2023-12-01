@@ -254,16 +254,18 @@ class Match:
         # Start the match
         logging.info('Starting race')
        
-        if(race is None):
-          race = self._pystk.Race(race_config)
+
+          
         
 
 
         if(self.isRaceRunning == False):
+            race = self._pystk.Race(race_config)
             race.start()
             self.isRaceRunning = True
+            race.step()
         
-        race.step()
+        
         
 
 
