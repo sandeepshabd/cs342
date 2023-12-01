@@ -14,6 +14,9 @@ TRACK_NAME = 'icy_soccer_field'
 MAX_FRAMES = 1000
 TRACK_OFFSET = 15
 
+TIMEOUT_SLACK = 2   # seconds
+TIMEOUT_STEP = 0.1  # seconds
+
 DATASET_PATH = 'drive_data'
 ON_COLAB = os.environ.get('ON_COLAB', False)
 COLAB_IMAGES = list()
@@ -143,24 +146,53 @@ class Match:
         return np.clip(np.array([p[0] / p[-1], -p[1] / p[-1]]), -1, 1)
     _singleton = None
     
+    def _to_image300_400(self, x, proj, view):
+        W, H = 400, 300
+        op = np.array(list(x) + [1])  # Convert x to homogeneous coordinates
+        p = proj @ view @ op  # Matrix multiplication
+
+        # Combine transformations and scaling into a single step
+        aimpoint = np.array([(W / 2) * (p[0] / p[-1] + 1), 
+                            (H / 2) * (-p[1] / p[-1] + 1)])
+
+        return aimpoint
+
+def collect(_, im, puck_flag, pt, instance=None):
+    global file_no 
+    id = file_no 
+    divide_data = False  
+    save_data = True     
+    instance_data = False  
+
+    if save_data:
+        # Define base directory based on puck_flag and divide_data
+        if puck_flag and divide_data:
+            base_dir = '/content/cs342/final/data_YesPuck/'
+        elif not puck_flag and divide_data:
+            base_dir = '/content/cs342/final/data_NoPuck/'
+        else:
+            base_dir = '/content/cs342/final/data_instance/' if instance_data else '/content/cs342/final/data/'
+
+        fn = path.join(base_dir, 'ice_hockey' + '_%05d' % id)
+        Image.fromarray(im).save(fn + '.png')
+
+        # Save additional data based on instance_data flag
+        if instance_data:
+            # Image.fromarray(instance).save(fn + '_instance' + '.png')
+            # torch.save(instance, fn + '_instance' + '_tensor.pt')
+            with open(fn + '.npy', 'wb') as f:
+                np.save(f, instance)
+        else:
+            with open(fn + '.csv', 'w') as f:
+                # f.write('%0.1f,%0.1f,%0.1f' % (pt[0], pt[1], puck_flag))  # with puck flag
+                f.write('%0.1f,%0.1f' % tuple(pt))
+
+        file_no += 1
+    
     
     def __init__(self, use_graphics=False, logging_level=None):
         # DO this here so things work out with ray
-        self._pystk = pystk
-        self._use_graphics = use_graphics
-        self._pystk.clean()
-        if( Match._singleton is None):
-          Match._singleton = self
-          self.isRaceRunning = False
-          self.config = pystk.GraphicsConfig.hd()
-          self.config.screen_width = 128
-          self.config.screen_height = 96
-          self._pystk.init(self.config)
-          self.k = None
-        else:
-            self.isRaceRunning = True
-        
-        """
+        import pystk
         self._pystk = pystk
         if logging_level is not None:
             logging.basicConfig(level=logging_level)
@@ -175,7 +207,6 @@ class Match:
             graphics_config = self._pystk.GraphicsConfig.none()
 
         self._pystk.init(graphics_config)
-        """
 
     def __del__(self):
         if hasattr(self, '_pystk') and self._pystk is not None and self._pystk.clean is not None:  # Don't ask why...
@@ -216,16 +247,13 @@ class Match:
         logging.debug('timeout {} <? {} {}'.format(timeout, t1, t2))
         return t1 < timeout[0], t2 < timeout[1]
 
-    def run(self, team1, team2, num_player=1, max_frames=MAX_FRAMES, max_score=3, record_fn=None, timeout=1e10,
-            initial_ball_location=[0, 0], initial_ball_velocity=[0, 0], verbose=True, data_callback=None):
-        #RaceConfig = pystk.RaceConfig(num_kart=1, laps=1, track=TRACK_NAME)
+    def run(self, team1, team2, num_player=1, max_frames=MAX_FRAMES, max_score=3, record_fn=None, timeout=TIMEOUT_SLACK,
+            timeout_step=TIMEOUT_STEP,initial_ball_location=[0, 0], initial_ball_velocity=[0, 0], verbose= True):
+        RaceConfig = self._pystk.RaceConfig
 
-        logging.info('Creating teams')
-        initial_ball_location = [0,0]
-        if verbose and not ON_COLAB:
-            import matplotlib.pyplot as plt
-            fig, ax = plt.subplots(1, 1)
-        elif verbose and ON_COLAB:
+        logging.info('RUN')
+        
+        if verbose and ON_COLAB:
             global COLAB_IMAGES
             COLAB_IMAGES = list()
 
@@ -253,21 +281,13 @@ class Match:
         
         # Start the match
         logging.info('Starting race')
-       
-
-          
-        
-
-
+      
         if(self.isRaceRunning == False):
             race = self._pystk.Race(race_config)
             race.start()
             self.isRaceRunning = True
             race.step()
         
-        
-        
-
 
         state = self._pystk.WorldState()
         state.update()
@@ -289,6 +309,8 @@ class Match:
             if self._use_graphics:
                 team1_images = [np.array(race.render_data[i].image) for i in range(0, len(race.render_data), 2)]
                 team2_images = [np.array(race.render_data[i].image) for i in range(1, len(race.render_data), 2)]
+                heatmap_team1 = [race.render_data[i].instance for i in range(0, len(race.render_data), 2)]
+                #heatmap_team2 = [race.render_data[i].instance for i in range(1, len(race.render_data), 2)]
 
             # Have each team produce actions (in parallel)
             if t1_can_act:
@@ -322,57 +344,67 @@ class Match:
                 a2 = team2_actions[i] if team2_actions is not None and i < len(team2_actions) else {}
                 actions.append(a1)
                 actions.append(a2)
+                
             print('players')
             print(state.players)
-            kart = state.players[0].kart
-            proj = np.array(state.players[0].camera.projection).T
-            view = np.array(state.players[0].camera.view).T
+            
 
-            aim_point_world = self._point_on_track(kart.distance_down_track+TRACK_OFFSET, TRACK_NAME)
-            aim_point_image = self._to_image(aim_point_world, proj, view)
-             
-            if data_callback is not None:
-                data_callback(it, np.array(self.k.render_data[0].image), aim_point_image)
+            x=soccer_state['ball']['location'][0]
+            y = soccer_state['ball']['location'][1] 
+            z=soccer_state['ball']['location'][2]
+            xyz = np.random.rand(3)
+            xz=np.random.rand(2)
+            xz[0] = x
+            xz[1] = z
+            xyz[0] = x
+            xyz[1] = y
+            xyz[2] = z
+            
+            aim_point_300_400 = np.clip(aim_point_300_400, [0, 0], [400, 300])
+            aim_point_300_400_2 = np.clip(aim_point_300_400_2, [0, 0], [400, 300])
+            
+            proj = np.array(team1_state[0]['camera']['projection']).T
+            view = np.array(team1_state[0]['camera']['view']).T
+            
+            proj2 = np.array(team2_state[0]['camera']['projection']).T
+            view2 = np.array(team2_state[0]['camera']['view']).T
+
+            #aim_point_world = self._point_on_track(kart.distance_down_track+TRACK_OFFSET, TRACK_NAME)
+            aim_point_image, out_of_frame = self._to_image(xyz, proj, view)  
+            #aim_point_image2, out_of_frame = self._to_image(xyz, proj2, view2) 
+            
+            if heatmap_team1:
+                # Right shift the entire array at once
+                heatmap_team1[0] >>= 24
+
+                # Use numpy to check if any element equals 8
+                puck_flag = int(np.any(heatmap_team1[0] == 8))
 
             if record_fn:
                 self._r(record_fn)(team1_state, team2_state, soccer_state=soccer_state, actions=actions,
                                    team1_images=team1_images, team2_images=team2_images)
-                
-            if verbose and not ON_COLAB:
-                ax.clear()
-                ax.imshow(self.k.render_data[0].image)
-                WH2 = np.array([self.config.screen_width, self.config.screen_height]) / 2
-                ax.add_artist(plt.Circle(WH2*(1+self._to_image(kart.location, proj, view)), 2, ec='b', fill=False, lw=1.5))
-                ax.add_artist(plt.Circle(WH2*(1+self._to_image(aim_point_world, proj, view)), 2, ec='r', fill=False, lw=1.5))
-                """
-                if planner:
-                    ap = self._point_on_track(kart.distance_down_track + TRACK_OFFSET, track)
-                    ax.add_artist(plt.Circle(WH2*(1+aim_point_image), 2, ec='g', fill=False, lw=1.5))
-                plt.pause(1e-3)
-                """
-            elif verbose and ON_COLAB:
-                from PIL import Image, ImageDraw
-                image = Image.fromarray(self.k.render_data[0].image)
-                draw = ImageDraw.Draw(image)
+                self.collect(team1_images[0], puck_flag, aim_point_image)
 
-                WH2 = np.array([self.config.screen_width, self.config.screen_height]) / 2
+                if verbose and ON_COLAB:
+                    from PIL import Image, ImageDraw
+                    image = Image.fromarray(self.k.render_data[0].image)
+                    draw = ImageDraw.Draw(image)
 
-                p = (aim_point_image + 1) * WH2
-                draw.ellipse((p[0] - 2, p[1] - 2, p[0]+2, p[1]+2), fill=(255, 0, 0))
-                """
-                if planner:
-                    p = (aim_point + 1) * WH2
-                    draw.ellipse((p[0] - 2, p[1] - 2, p[0]+2, p[1]+2), fill=(0, 255, 0))
-                """
+                    WH2 = np.array([self.config.screen_width, self.config.screen_height]) / 2
 
-                COLAB_IMAGES.append(np.array(image))
+                    p = (aim_point_image + 1) * WH2
+                    draw.ellipse((p[0] - 2, p[1] - 2, p[0]+2, p[1]+2), fill=(255, 0, 0))
+
+                    COLAB_IMAGES.append(np.array(team1_images[0]))
 
             logging.debug('  race.step  [score = {}]'.format(state.soccer.score))
             if (not race.step([self._pystk.Action(**a) for a in actions]) and num_player) or sum(state.soccer.score) >= max_score:
                 break
 
+        if verbose and ON_COLAB:
+            show_on_colab()
+            
         race.stop()
-        self.isRaceRunning == False
         del race
 
         return state.soccer.score
@@ -380,137 +412,6 @@ class Match:
     def wait(self, x):
         return x
     
-    def close(self):
-        """
-        Call this function, once you're done with PyTux
-        """
-        if self.k is not None:
-            self.k.stop()
-            del self.k
-        self._pystk.clean()
-
-def main(pytux, team1='AI', team2='AI', track=['tux'], output=DATASET_PATH, num_players=2,max_score =3,
-         n_images=10000, steps_per_track=20000, aim_noise=0.1,num_frames =1200, ball_location =[0,0], ball_velocity=[0,0],
-         vel_noise=5, verbose=False, parallel=None, record_video = None, record_state=None):
-
-    from os import makedirs
-
-    try:
-        makedirs(output)
-    except OSError:
-        pass
-
-    track = [track] if isinstance(track, str) else track
-
-    for t in track:
-        n, images_per_track = 0, n_images // len(track)
-
-        def collect(_, im, pt):
-            from PIL import Image
-            from os import path
-            nonlocal n
-            id = n if n < images_per_track else np.random.randint(0, n + 1)
-            if id < images_per_track:
-                fn = path.join(output, t + '_%05d' % id)
-                Image.fromarray(im).save(fn + '.png')
-                with open(fn + '.csv', 'w') as f:
-                    f.write('%0.1f,%0.1f' % tuple(pt))
-            n += 1
-        """
-        # Use 0 noise for the first round
-        _aim_noise, _vel_noise = 0, 0
-
-        while n < steps_per_track:
-            def noisy_control(aim_pt, vel):
-                return control(
-                        aim_pt + np.random.randn(*aim_pt.shape) * _aim_noise,
-                        vel + np.random.randn() * _vel_noise)
-
-            steps, how_far = pytux.rollout(t, noisy_control, max_frames=1000, verbose=verbose, data_callback=collect)
-            print(steps, how_far)
-
-            # Add noise after the first round
-            _aim_noise, _vel_noise = aim_noise, vel_noise
-            
-        """
-            
-            
-    logging.basicConfig(level=environ.get('LOGLEVEL', 'WARNING').upper())
-    
-
-
-    if parallel is None or remote.ray is None:
-        # Create the teams
-        team1 = AIRunner() if team1 == 'AI' else TeamRunner(team1)
-        team2 = AIRunner() if team2 == 'AI' else TeamRunner(team2)
-
-        # What should we record?
-        recorder = None
-        if record_video:
-            recorder = recorder & utils.VideoRecorder(record_video)
-
-        if record_state:
-            recorder = recorder & utils.StateRecorder(record_state)
-
-        # Start the match
-        match = Match(use_graphics=team1.agent_type == 'image' or team2.agent_type == 'image')
-        try:
-            result = match.run(team1, team2, num_players, num_frames, max_score,
-                               ball_location, ball_velocity,recorder,  data_callback=collect)
-        except MatchException as e:
-            print('Match failed', e.score)
-            print(' T1:', e.msg1)
-            print(' T2:', e.msg2)
-
-        print('Match results', result)
-
-    else:
-        # Fire up ray
-        remote.init(logging_level=getattr(logging, environ.get('LOGLEVEL', 'WARNING').upper()), configure_logging=True,
-                    log_to_driver=True, include_dashboard=False)
-
-        # Create the teams
-        team1 = AIRunner() if team1 == 'AI' else remote.RayTeamRunner.remote(team1)
-        team2 = AIRunner() if team2 == 'AI' else remote.RayTeamRunner.remote(team2)
-        team1_type, *_ = team1.info() if team1 == 'AI' else remote.get(team1.info.remote())
-        team2_type, *_ = team2.info() if team2 == 'AI' else remote.get(team2.info.remote())
-
-        # What should we record?
-        assert args.record_state is None or record_video is None, "Cannot record both video and state in parallel mode"
-
-        # Start the match
-        results = []
-        for i in range(parallel):
-            recorder = None
-            if record_video:
-                ext = Path(record_video).suffix
-                recorder = remote.RayVideoRecorder.remote(record_video.replace(ext, f'.{i}{ext}'))
-            elif record_state:
-                ext = Path(record_state).suffix
-                recorder = remote.RayStateRecorder.remote(record_state.replace(ext, f'.{i}{ext}'))
-
-            match = remote.RayMatch.remote(logging_level=getattr(logging, environ.get('LOGLEVEL', 'WARNING').upper()),
-                                           use_graphics=team1_type == 'image' or team2_type == 'image')
-            result = match.run.remote(team1, team2, args.num_players, num_frames, max_score,
-                                      ball_location,
-                                      ball_velocity,
-                                      record_fn=recorder)
-            results.append(result)
-
-        for result in results:
-            try:
-                result = remote.get(result)
-            except (remote.RayMatchException, MatchException) as e:
-                print('Match failed', e.score)
-                print(' T1:', e.msg1)
-                print(' T2:', e.msg2)
-
-            print('Match results', result)
-    match.close()
-
-
-
-
 
 #-----------------------------------------------------------
 if __name__ == '__main__':
