@@ -1,23 +1,11 @@
 import logging
 import numpy as np
-import os
 from collections import namedtuple
-import pystk
 
 TRACK_NAME = 'icy_soccer_field'
 MAX_FRAMES = 1000
 
 RunnerInfo = namedtuple('RunnerInfo', ['agent_type', 'error', 'total_act_time'])
-
-ON_COLAB = os.environ.get('ON_COLAB', False)
-COLAB_IMAGES = list()
-print(ON_COLAB)
-
-def show_on_colab():
-    from moviepy.editor import ImageSequenceClip
-    from IPython.display import display
-
-    display(ImageSequenceClip(COLAB_IMAGES, fps=15).ipython_display(width=512, autoplay=True, loop=True, maxduration=120))
 
 
 def to_native(o):
@@ -124,17 +112,23 @@ class Match:
     """
         Do not create more than one match per process (use ray to create more)
     """
-    _singleton = None
-    def __init__(self, screen_width=128, screen_height=96):
+    def __init__(self, use_graphics=False, logging_level=None):
         # DO this here so things work out with ray
-        
-        assert PyTux._singleton is None, "Cannot create more than one pytux object"
-        PyTux._singleton = self
-        self.config = pystk.GraphicsConfig.hd()
-        self.config.screen_width = screen_width
-        self.config.screen_height = screen_height
-        pystk.init(self.config)
-        self.k = None
+        import pystk
+        self._pystk = pystk
+        if logging_level is not None:
+            logging.basicConfig(level=logging_level)
+
+        # Fire up pystk
+        self._use_graphics = use_graphics
+        if use_graphics:
+            graphics_config = self._pystk.GraphicsConfig.hd()
+            graphics_config.screen_width = 400
+            graphics_config.screen_height = 300
+        else:
+            graphics_config = self._pystk.GraphicsConfig.none()
+
+        self._pystk.init(graphics_config)
 
     def __del__(self):
         if hasattr(self, '_pystk') and self._pystk is not None and self._pystk.clean is not None:  # Don't ask why...
@@ -294,13 +288,13 @@ if __name__ == '__main__':
     parser.add_argument('team2', help="Python module name or `AI` for AI players.")
     args = parser.parse_args()
 
-    logging.basicConfig(level=environ.get('LOGLEVEL', 'DEBUG').upper())
+    logging.basicConfig(level=environ.get('LOGLEVEL', 'WARNING').upper())
 
     if args.parallel is None or remote.ray is None:
         # Create the teams
         team1 = AIRunner() if args.team1 == 'AI' else TeamRunner(args.team1)
         team2 = AIRunner() if args.team2 == 'AI' else TeamRunner(args.team2)
-        print('---should run AI--')
+
         # What should we record?
         recorder = None
         if args.record_video:
