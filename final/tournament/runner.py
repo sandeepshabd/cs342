@@ -146,14 +146,15 @@ class Match:
     
     def __init__(self, use_graphics=False, logging_level=None):
         # DO this here so things work out with ray
-        pystk.clean()
+        self._pystk = pystk
+        self._pystk.clean()
         assert Match._singleton is None, "Cannot create more than one pytux object"
         Match._singleton = self
         
         self.config = pystk.GraphicsConfig.hd()
         self.config.screen_width = 128
         self.config.screen_height = 96
-        pystk.init(self.config)
+        self._pystk.init(self.config)
         self.k = None
         
         """
@@ -214,7 +215,7 @@ class Match:
 
     def run(self, team1, team2, num_player=1, max_frames=MAX_FRAMES, max_score=3, record_fn=None, timeout=1e10,
             initial_ball_location=[0, 0], initial_ball_velocity=[0, 0], verbose=True, data_callback=None):
-        RaceConfig = pystk.RaceConfig(num_kart=1, laps=1, track=TRACK_NAME)
+        #RaceConfig = pystk.RaceConfig(num_kart=1, laps=1, track=TRACK_NAME)
 
         logging.info('Creating teams')
         
@@ -241,7 +242,7 @@ class Match:
         # Setup the race config
         logging.info('Setting up race')
 
-        race_config = RaceConfig(track=TRACK_NAME, mode=RaceConfig.RaceMode.SOCCER, num_kart=2 * num_player)
+        race_config = self._pystk.RaceConfig(track=TRACK_NAME, mode=self._pystk.RaceConfig.RaceMode.SOCCER, num_kart=2 * num_player)
         race_config.players.pop()
         for i in range(num_player):
             race_config.players.append(self._make_config(0, hasattr(team1, 'is_ai') and team1.is_ai, t1_cars[i % len(t1_cars)]))
@@ -368,7 +369,7 @@ class Match:
         if self.k is not None:
             self.k.stop()
             del self.k
-        pystk.clean()
+        self._pystk.clean()
 
 def main(pytux, team1='AI', team2='AI', track=['tux'], output=DATASET_PATH, num_players=2,max_score =3,
          n_images=10000, steps_per_track=20000, aim_noise=0.1,num_frames =1200, ball_location =[0,0], ball_velocity=[0,0],
