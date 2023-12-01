@@ -147,15 +147,18 @@ class Match:
     def __init__(self, use_graphics=False, logging_level=None):
         # DO this here so things work out with ray
         self._pystk = pystk
-        self._pystk.clean()
-        assert Match._singleton is None, "Cannot create more than one pytux object"
-        Match._singleton = self
-        
-        self.config = pystk.GraphicsConfig.hd()
-        self.config.screen_width = 128
-        self.config.screen_height = 96
-        self._pystk.init(self.config)
-        self.k = None
+        self._use_graphics = use_graphics
+        #self._pystk.clean()
+        if( Match._singleton is None):
+          Match._singleton = self
+          self.isRaceRunning = False
+          self.config = pystk.GraphicsConfig.hd()
+          self.config.screen_width = 128
+          self.config.screen_height = 96
+          self._pystk.init(self.config)
+          self.k = None
+        else:
+            self.isRaceRunning = True
         
         """
         self._pystk = pystk
@@ -218,7 +221,7 @@ class Match:
         #RaceConfig = pystk.RaceConfig(num_kart=1, laps=1, track=TRACK_NAME)
 
         logging.info('Creating teams')
-        
+        initial_ball_location = [0,0]
         if verbose and not ON_COLAB:
             import matplotlib.pyplot as plt
             fig, ax = plt.subplots(1, 1)
@@ -250,14 +253,23 @@ class Match:
         
         # Start the match
         logging.info('Starting race')
-        race = self._pystk.Race(race_config)
-        race.start()
+       
+        if(race is None):
+          race = self._pystk.Race(race_config)
+        
+
+
+        if(self.isRaceRunning == False):
+            race.start()
+            self.isRaceRunning = True
+        
         race.step()
         
 
 
         state = self._pystk.WorldState()
         state.update()
+        print(initial_ball_location)
         state.set_ball_location((initial_ball_location[0], 1, initial_ball_location[1]),
                                 (initial_ball_velocity[0], 0, initial_ball_velocity[1]))
         
@@ -357,6 +369,7 @@ class Match:
                 break
 
         race.stop()
+        self.isRaceRunning == False
         del race
 
         return state.soccer.score
