@@ -160,12 +160,15 @@ class Match:
 
         return aimpoint
 
-    def collect(_, im, puck_flag, pt, instance=None):
+    def collect(_,is400, player,im, puck_flag, pt, instance=None):
         global file_no 
         id = file_no 
         file_no += 1
         
-        fn = path.join('/content/cs342/final/data/', 'ice_hockey' + '_%05d' % id)
+        if(is400):
+            fn = path.join('/content/cs342/final/data400/', player,'/ice_hockey' + '_%05d' % id)
+        else:
+            fn = path.join('/content/cs342/final/data/', player,'/ice_hockey' + '_%05d' % id)
         print('file formed')
         Image.fromarray(im).save(fn + '.png')
         print('image saved')
@@ -314,7 +317,7 @@ class Match:
                 team1_images = [np.array(race.render_data[i].image) for i in range(0, len(race.render_data), 2)]
                 team2_images = [np.array(race.render_data[i].image) for i in range(1, len(race.render_data), 2)]
                 heatmap_team1 = [race.render_data[i].instance for i in range(0, len(race.render_data), 2)]
-                #heatmap_team2 = [race.render_data[i].instance for i in range(1, len(race.render_data), 2)]
+                heatmap_team2 = [race.render_data[i].instance for i in range(1, len(race.render_data), 2)]
                 #print("heatmap")
                 #print(heatmap_team1[0])
             # Have each team produce actions (in parallel)
@@ -369,7 +372,7 @@ class Match:
 
             #aim_point_world = self._point_on_track(kart.distance_down_track+TRACK_OFFSET, TRACK_NAME)
             aim_point_image, out_of_frame = self._to_image(xyz, proj, view)  
-            #aim_point_image2, out_of_frame = self._to_image(xyz, proj2, view2) 
+            aim_point_image2, out_of_frame = self._to_image(xyz, proj2, view2) 
             
             aim_point_300_400 = self._to_image300_400(xyz, proj, view)
             aim_point_300_400_2 = self._to_image300_400(xyz, proj2, view2)
@@ -380,17 +383,30 @@ class Match:
             if heatmap_team1:
                 # Right shift the entire array at once
                 heatmap_team1[0] >>= 24
-                puck_flag = 0
+                puck_flag1 = 0
                 for i in range (300):
                     for j in range (400):
                         if heatmap_team1[0][i][j]  == 8:
-                            puck_flag = 1
+                            puck_flag1 = 1
+                            
+            if heatmap_team2:
+                # Right shift the entire array at once
+                heatmap_team2[0] >>= 24
+                puck_flag2 = 0
+                for i in range (300):
+                    for j in range (400):
+                        if heatmap_team1[0][i][j]  == 8:
+                            puck_flag2 = 1
 
-            print(f'puck flag:{puck_flag}')
+            print(f'puck flag:{puck_flag1}')
             if record_fn:
                 self._r(record_fn)(team1_state, team2_state, soccer_state=soccer_state, actions=actions,
                                    team1_images=team1_images, team2_images=team2_images)
-                self.collect(team1_images[0], puck_flag, aim_point_300_400, heatmap_team1[0])
+                self.collect(True,0,team1_images[0], puck_flag1, aim_point_300_400, heatmap_team1[0])
+                self.collect(True,1,team1_images[1], puck_flag2, aim_point_300_400_2, heatmap_team2[0])
+                
+                self.collect(False,0,team1_images[0], puck_flag1, aim_point_image, heatmap_team1[0])
+                self.collect(False,1,team1_images[1], puck_flag2, aim_point_image, heatmap_team2[0])
 
                 if verbose and ON_COLAB:
                     from PIL import Image, ImageDraw
