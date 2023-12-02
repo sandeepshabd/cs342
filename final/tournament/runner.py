@@ -190,7 +190,7 @@ def collect(_, im, puck_flag, pt, instance=None):
         file_no += 1
     
     
-    def __init__(self, use_graphics=False, logging_level=None):
+    def __init__(self, use_graphics=True, logging_level=None):
         # DO this here so things work out with ray
         import pystk
         self._pystk = pystk
@@ -249,7 +249,7 @@ def collect(_, im, puck_flag, pt, instance=None):
 
     def run(self, team1, team2, num_player=1, max_frames=MAX_FRAMES, max_score=3, record_fn=None, timeout=TIMEOUT_SLACK,
             timeout_step=TIMEOUT_STEP,initial_ball_location=[0, 0], initial_ball_velocity=[0, 0], verbose= True):
-        RaceConfig = self._pystk.RaceConfig
+
 
         logging.info('RUN')
         
@@ -451,7 +451,8 @@ if __name__ == '__main__':
             recorder = recorder & utils.StateRecorder(args.record_state)
 
         # Start the match
-        match = Match(use_graphics=team1.agent_type == 'image' or team2.agent_type == 'image')
+        #match = Match(use_graphics=team1.agent_type == 'image' or team2.agent_type == 'image')
+        match = Match()
         try:
             result = match.run(team1, team2, args.num_players, args.num_frames, max_score=args.max_score,
                                initial_ball_location=args.ball_location, initial_ball_velocity=args.ball_velocity,
