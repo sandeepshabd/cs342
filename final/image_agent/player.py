@@ -52,6 +52,7 @@ class Team:
           print ("\n\n     Player (TEAM) INIT: USING PLANNER \n\n")
           
           self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+          print('player calling load model')
           self.Planner = load_model()
           self.Planner.eval()
           self.Planner = self.Planner.to(self.device)

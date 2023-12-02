@@ -60,9 +60,12 @@ def save_model(model):
 
 
 def load_model():
+    print('calling load model')
     from torch import load
     from os import path
     r = Planner()
+    print('location------>')
+    print(path.join(path.dirname(path.abspath(__file__)), 'planner.th'), map_location='cpu')
     r.load_state_dict(load(path.join(path.dirname(path.abspath(__file__)), 'planner.th'), map_location='cpu'))
     return r
 
