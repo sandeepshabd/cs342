@@ -248,10 +248,11 @@ def collect(_, im, puck_flag, pt, instance=None):
         return t1 < timeout[0], t2 < timeout[1]
 
     @classmethod
-    def run(self, team1, team2, num_player=1, max_frames=MAX_FRAMES, max_score=3, record_fn=None, timeout=TIMEOUT_SLACK,
-            timeout_step=TIMEOUT_STEP,initial_ball_location=[0, 0], initial_ball_velocity=[0, 0], verbose= True):
+    def run(self, team1, team2, num_player=1, max_frames=MAX_FRAMES, max_score=3, record_fn=None, timeout=1e10,
+            initial_ball_location=[0, 0], initial_ball_velocity=[0, 0], verbose=False):
 
-
+        timeout=TIMEOUT_SLACK
+        verbose= True
         logging.info('RUN')
         
         if verbose and ON_COLAB:
@@ -442,6 +443,9 @@ if __name__ == '__main__':
         # Create the teams
         team1 = AIRunner() if args.team1 == 'AI' else TeamRunner(args.team1)
         team2 = AIRunner() if args.team2 == 'AI' else TeamRunner(args.team2)
+        
+        print(team1)
+        print(team2)
 
         # What should we record?
         recorder = None
@@ -455,7 +459,7 @@ if __name__ == '__main__':
         #match = Match(use_graphics=team1.agent_type == 'image' or team2.agent_type == 'image')
         match = Match()
         try:
-            result = match.run(team1, team2, args.num_players, args.num_frames, max_score=args.max_score,
+            result = match.run(team1, team2, args.num_players, args.num_frames, max_score=3,
                                initial_ball_location=args.ball_location, initial_ball_velocity=args.ball_velocity,
                                record_fn=recorder)
         except MatchException as e:
@@ -496,6 +500,8 @@ if __name__ == '__main__':
                                       initial_ball_location=args.ball_location,
                                       initial_ball_velocity=args.ball_velocity,
                                       record_fn=recorder)
+            
+            
             results.append(result)
 
         for result in results:
