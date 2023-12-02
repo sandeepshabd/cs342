@@ -261,8 +261,9 @@ class Match:
                 return [3, 0], 'other team timed out',\
                        'Timeout ({:.4f}/iter > {:.4f}/iter)'.format(t2 / n_iter, timeout_step)
 
-    def run(self, team1, team2, num_player=1, max_frames=MAX_FRAMES, max_score=3, record_fn=None, timeout=1e10,
-            initial_ball_location=[0, 0], initial_ball_velocity=[0, 0], verbose=False):
+    def run(self, team1, team2, num_player=1, max_frames=MAX_FRAMES, max_score=3, record_fn=None,
+            timeout_slack=TIMEOUT_SLACK, timeout_step=TIMEOUT_STEP, initial_ball_location=[0, 0],
+            initial_ball_velocity=[0, 0]):
 
         timeout=TIMEOUT_SLACK
         verbose= True
