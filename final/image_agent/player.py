@@ -10,8 +10,8 @@ def load_model():
     from os import path
     r = Planner()
     print('location------>')
-    print(path.join(path.dirname(path.abspath(__file__)), 'planner.th'), map_location='cpu')
     r.load_state_dict(load(path.join(path.dirname(path.abspath(__file__)), 'planner.th'), map_location='cpu'))
+    print('location--done---->')
     return r
 
 def limit_period(angle):
