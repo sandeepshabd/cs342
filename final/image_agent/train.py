@@ -1,48 +1,40 @@
+from anyio import Path
 from .planner import Planner, save_model 
 import torch
-import torch.utils.tensorboard as tb
-import numpy as np
 from .utils import load_data
 from . import dense_transforms
+import torch.utils.tensorboard as tb
+import numpy as np
+import torch
+import inspect
+
+from os import path
+import matplotlib.pyplot as plt
+import torchvision.transforms.functional as TF
+from PIL import  ImageDraw
 
 def train(args):
-    from os import path
-    model = Planner()
+
+    device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+    model = Planner().to(torch.device('cuda' if torch.cuda.is_available() else 'cpu')).to(device)
+    basic_transform = 'Compose([ColorJitter(0.9, 0.9, 0.9, 0.1), RandomHorizontalFlip(), ToTensor()])'
     train_logger, valid_logger = None, None
     if args.log_dir is not None:
         train_logger = tb.SummaryWriter(path.join(args.log_dir, 'train'))
 
-    import torch
-
-    device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-
-    model = model.to(device)
-
-    print(model)
-
     if args.continue_training:
         model.load_state_dict(torch.load(path.join(path.dirname(path.abspath(__file__)), 'planner.th')))
 
-    loss = torch.nn.L1Loss()   #mean?
-    #loss = torch.nn.MSELoss(reduce='mean')
-    #loss= torch.nn.CrossEntropyLoss()  #render_data instance
-    #loss = torch.nn.BCEWithLogitsLoss(reduction='none')  #render_data instance, tested
-
-    optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
-    
-    import inspect
-    transform = eval(args.transform, {k: v for k, v in inspect.getmembers(dense_transforms) if inspect.isclass(v)})
-
-    train_data = load_data(transform=transform, num_workers=args.num_workers)
+    loss = torch.nn.MSELoss(reduction='mean')
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-5)
+    transform = eval(basic_transform, {k: v for k, v in inspect.getmembers(dense_transforms) if inspect.isclass(v)})
+    train_data = load_data(transform=transform, num_workers=4)
    
     global_step = 0
-    for epoch in range(args.num_epoch):
+    for epoch in range(150):
 
         model.train()
         losses = []
-
-        print (len(train_data))
-
         for img, label in train_data:
             
 
