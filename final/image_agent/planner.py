@@ -1,116 +1,64 @@
+
+
 import torch
-import torch.nn.functional as F
 import torch.nn as nn
+import torch.nn.functional as F
 
+def compute_spatial_argmax(logit):
 
-def spatial_argmax(logit):
-    """
-    Compute the soft-argmax of a heatmap
-    :param logit: A tensor of size BS x H x W
-    :return: A tensor of size BS x 2 the soft-argmax in normalized coordinates (-1 .. 1)
-    """
+    # Reshape and apply softmax
     weights = F.softmax(logit.view(logit.size(0), -1), dim=-1).view_as(logit)
-    return torch.stack(((weights.sum(1) * torch.linspace(-1, 1, logit.size(2)).to(logit.device)[None]).sum(1),
-                        (weights.sum(2) * torch.linspace(-1, 1, logit.size(1)).to(logit.device)[None]).sum(1)), 1)
-
-
-        
-
-class Planner(torch.nn.Module):
     
-    class UpBlock(torch.nn.Module):
-        def __init__(self, n_input, n_output, kernel_size=3, stride=2):
-            super().__init__()
-            self.c1 = torch.nn.ConvTranspose2d(n_input, n_output, kernel_size=kernel_size, padding=kernel_size // 2,
-                                                stride=stride, output_padding=1)
-
-        def forward(self, x):
-            return F.relu(self.c1(x))
+    # Calculate argmax
+    argmax_x = (weights.sum(1) * torch.linspace(-1, 1, logit.size(2), device=logit.device)).sum(1)
+    argmax_y = (weights.sum(2) * torch.linspace(-1, 1, logit.size(1), device=logit.device)).sum(1)
     
-    class Block(torch.nn.Module):
-        def __init__(self, n_input, n_output, kernel_size=3, stride=2):
-            super().__init__()
-            self.conv_layers = torch.nn.Sequential(
-                torch.nn.Conv2d(n_input, n_output, kernel_size, stride=stride, padding=kernel_size // 2),
-                torch.nn.BatchNorm2d(n_output),
-                torch.nn.ReLU(inplace=True),
-                torch.nn.Conv2d(n_output, n_output, kernel_size, padding=kernel_size // 2),
-                torch.nn.BatchNorm2d(n_output),
-                torch.nn.ReLU(inplace=True),
-                torch.nn.Conv2d(n_output, n_output, kernel_size, padding=kernel_size // 2),
-                torch.nn.BatchNorm2d(n_output),
-                torch.nn.ReLU(inplace=True)
-            )
-            self.skip = torch.nn.Conv2d(n_input, n_output, kernel_size=1, stride=stride)
+    return torch.stack((argmax_x, argmax_y), dim=1)
 
-        def forward(self, x):
-            return F.relu(self.conv_layers(x) + self.skip(x))
+
+class Planner(nn.Module):
+
+    def __init__(self, channels=[16, 32, 64, 32]):
+        super(Planner, self).__init__()
+
+        # Define convolutional blocks
+        def conv_block(in_channels, out_channels):
+            return [nn.BatchNorm2d(out_channels), nn.Conv2d(out_channels, in_channels, 5, 2, 2), nn.ReLU(True)]
+
+        # Define upconvolutional blocks
+        def upconv_block(in_channels, out_channels):
+            return [nn.BatchNorm2d(out_channels), nn.ConvTranspose2d(out_channels, in_channels, 4, 2, 1),
+                    nn.ReLU(True)]
+
+        # Building convolutional and upconvolutional layers
+        current_channels, conv_layers, upconv_layers = 3, [], []
+        for channel in channels:
+            conv_layers += conv_block(channel, current_channels)
+            current_channels = channel
+
+        for channel in reversed(channels[:-2]):
+            upconv_layers += upconv_block(channel, current_channels)
+            current_channels = channel
+
+        upconv_layers += [nn.BatchNorm2d(current_channels), nn.Conv2d(current_channels, 1, 1, 1, 0)]
+
+        self.conv = nn.Sequential(*conv_layers)
+        self.upconv = nn.Sequential(*upconv_layers)
         
-    def __init__(self, layers=[16, 32, 64, 128], n_class=1, kernel_size=3, use_skip=True):
-        super().__init__()
+        # Normalization parameters
+        self.mean = torch.FloatTensor([0.4519, 0.5590, 0.6204])
+        self.std = torch.FloatTensor([0.0012, 0.0018, 0.0020])
 
-        self.input_mean = torch.Tensor([0.3, 0.25, 0.27])
-        self.input_std = torch.Tensor([0.19, 0.19, 0.18])
-        
-        c_input = 3
-        self.use_skip = use_skip
-        self.n_conv = len(layers)
-        
-        skip_layer_size = [3] + layers[:-1]
-        for i, layer_i in enumerate(layers):
-            self.add_module('conv%d' % i, self.Block(c_input, layer_i, kernel_size, 2))
-            c_input = layer_i
+    def forward(self, img):
 
+        # Normalize the image
+        norm_img = (img - self.mean[None, :, None, None].to(img.device)) / self.std[None, :, None, None].to(img.device)
+        conv_output = self.conv(norm_img)
+        upconv_output = self.upconv(conv_output)
 
-        for i, layer_i in list(enumerate(layers))[::-1]:
-            self.add_module('upconv%d' % i, self.UpBlock(c_input, layer_i, kernel_size, 2))
-            c_input = layer_i
-            if self.use_skip:
-                c_input += skip_layer_size[i]
-                
-                
-        self.classifier = torch.nn.Conv2d(c_input, n_class, 1)
+        spatial_argmax = (1 + compute_spatial_argmax(upconv_output.squeeze(1)))
+        width, height = img.size(3), img.size(2)
+        output = spatial_argmax * torch.as_tensor([width - 1, height - 1], dtype=torch.float32, device=img.device)
 
-
-    def forward(self, x):
-        """
-        Your code here
-        Predict the aim point in image coordinate, given the supertuxkart image
-        @img: (B,3,96,128)
-        return (B,2)
-        """
-        z = (x - self.input_mean[None, :, None, None].to(x.device)) / self.input_std[None, :, None, None].to(x.device)
-        up_activation = []
-        
-        for i in range(self.n_conv):
-            up_activation.append(z)
-            z = self._modules['conv%d' % i](z)
-
-        for i in reversed(range(self.n_conv)):
-            z = self._modules['upconv%d' % i](z)
-            z = z[:, :, :up_activation[i].size(2), :up_activation[i].size(3)]
-            if self.use_skip:
-                z = torch.cat([z, up_activation[i]], dim=1)
-                
-                
-        encoder = self.classifier(z)
-        encoder = torch.squeeze(encoder,dim=1)
-        
-        decoder = spatial_argmax(encoder)
-        return decoder
-
-def save_model(model):
-    from torch import save
-    from os import path
-    if isinstance(model, Planner):
-        return save(model.state_dict(), path.join(path.dirname(path.abspath(__file__)), 'planner.th'))
-    raise ValueError("model type '%s' not supported!" % str(type(model)))
-
-
-def load_model():
-    from torch import load
-    from os import path
-    r = Planner()
-    r.load_state_dict(load(path.join(path.dirname(path.abspath(__file__)), 'planner.th'), map_location='cpu'))
-    return r
+        return output  # Output in 300/400 range
 
