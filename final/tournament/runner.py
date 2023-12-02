@@ -249,17 +249,20 @@ class Match:
             raise MatchException([3, 0], 'crash during {}: {}'.format(where, error), 'other team crashed')
         
        
+        print(t1)
+        print(t2)
         
-        logging.debug('timeout {} <? {} {}'.format(timeout_slack + n_iter * timeout_step, t1, t2))
-        if max(t1, t2) > timeout_slack + n_iter * timeout_step:
-            if t1 > t2:
-                # Team 2 wins because of a timeout
-                return [0, 3], 'Timeout ({:.4f}/iter > {:.4f}/iter)'.format(t1 / n_iter, timeout_step),\
-                       'other team timed out'
-            else:
-                # Team 1 wins because of a timeout
-                return [3, 0], 'other team timed out',\
-                       'Timeout ({:.4f}/iter > {:.4f}/iter)'.format(t2 / n_iter, timeout_step)
+        if(t1 is not None  and t2 is not None):
+            logging.debug('timeout {} <? {} {}'.format(timeout_slack + n_iter * timeout_step, t1, t2))
+            if max(t1, t2) > timeout_slack + n_iter * timeout_step:
+                if t1 > t2:
+                    # Team 2 wins because of a timeout
+                    return [0, 3], 'Timeout ({:.4f}/iter > {:.4f}/iter)'.format(t1 / n_iter, timeout_step),\
+                        'other team timed out'
+                else:
+                    # Team 1 wins because of a timeout
+                    return [3, 0], 'other team timed out',\
+                        'Timeout ({:.4f}/iter > {:.4f}/iter)'.format(t2 / n_iter, timeout_step)
 
     def run(self, team1, team2, num_player=1, max_frames=MAX_FRAMES, max_score=3, record_fn=None,
             timeout_slack=TIMEOUT_SLACK, timeout_step=TIMEOUT_STEP, initial_ball_location=[0, 0],
