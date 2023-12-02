@@ -58,7 +58,7 @@ def to_native(o):
 
 
 class AIRunner:
-    agent_type = 'state'
+    agent_type = 'image'
     is_ai = True
 
     def new_match(self, team: int, num_players: int) -> list:
