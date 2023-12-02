@@ -464,7 +464,7 @@ if __name__ == '__main__':
             recorder = recorder & utils.StateRecorder(args.record_state)
 
         # Start the match
-        match = Match(use_graphics=team1.agent_type == 'image' or team2.agent_type == 'image')
+        match = Match(use_graphics=True)
         #match = runner.Match(True)
         try:
             result = match.run(team1, team2, args.num_players, args.num_frames, max_score=3,
@@ -488,6 +488,9 @@ if __name__ == '__main__':
         team1_type, *_ = team1.info() if args.team1 == 'AI' else remote.get(team1.info.remote())
         team2_type, *_ = team2.info() if args.team2 == 'AI' else remote.get(team2.info.remote())
 
+        print(team1.info())
+        print(team2.info())
+        
         # What should we record?
         assert args.record_state is None or args.record_video is None, "Cannot record both video and state in parallel mode"
 
