@@ -7,6 +7,7 @@ import torch.utils.tensorboard as tb
 import numpy as np
 import torch
 import inspect
+from datetime import datetime
 
 from os import path
 import matplotlib.pyplot as plt
@@ -45,11 +46,10 @@ def train(args):
 
             xy = xy.to(device)
             loss_val = loss(out, xy)
-            print(f'{label} ->image size is {h} and {w} with loss value {loss_val}')
-            if train_logger is not None:
-                train_logger.add_scalar('loss', loss_val, global_step)
-                if global_step % 10 == 0:
-                    log(train_logger, img, label, out, global_step)
+          
+            train_logger.add_scalar('loss', loss_val, global_step)
+            if global_step % 10 == 0:
+                log(train_logger, img, label, out, global_step)
 
             optimizer.zero_grad()
             loss_val.backward()
@@ -59,7 +59,9 @@ def train(args):
             losses.append(loss_val.detach().cpu().numpy())
         
         avg_loss = np.mean(losses)
-        print('epoch %-3d \t loss = %0.3f' % (epoch, avg_loss))
+        nowTime = datetime.now()
+        date_time_str = nowTime.strftime("%Y-%m-%d %H:%M:%S")
+        print("Current Time =", date_time_str,' ,epoch=',epoch,' ,Avergae Loss=',avg_loss.item())
         save_model(model)
 
     save_model(model)
