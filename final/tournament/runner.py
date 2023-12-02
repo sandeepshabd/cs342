@@ -155,7 +155,7 @@ class Match:
     """
         Do not create more than one match per process (use ray to create more)
     """
-    
+    _use_graphics = False
     @staticmethod
     def _to_image(x, proj, view):
         p = proj @ view @ np.array(list(x) + [1])
