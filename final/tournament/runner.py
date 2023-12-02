@@ -257,12 +257,10 @@ class Match:
             if max(t1, t2) > timeout_slack + n_iter * timeout_step:
                 if t1 > t2:
                     # Team 2 wins because of a timeout
-                    return [0, 3], 'Timeout ({:.4f}/iter > {:.4f}/iter)'.format(t1 / n_iter, timeout_step),\
-                        'other team timed out'
+                    return [0, 3], 'Timeout ({:.4f}/iter > {:.4f}/iter)'.format(t1 / n_iter, timeout_step), 'other team timed out'
                 else:
                     # Team 1 wins because of a timeout
-                    return [3, 0], 'other team timed out',\
-                        'Timeout ({:.4f}/iter > {:.4f}/iter)'.format(t2 / n_iter, timeout_step)
+                    return [3, 0], 'other team timed out', 'Timeout ({:.4f}/iter > {:.4f}/iter)'.format(t2 / n_iter, timeout_step)
 
     def run(self, team1, team2, num_player=1, max_frames=MAX_FRAMES, max_score=3, record_fn=None,
             timeout_slack=TIMEOUT_SLACK, timeout_step=TIMEOUT_STEP, initial_ball_location=[0, 0],
@@ -287,7 +285,7 @@ class Match:
             assert self._use_graphics, 'Need to use_graphics for image agents.'
 
         # Deal with crashes
-        t1_can_act, t2_can_act = self._check(team1, team2, 'new_match', 0, TIMEOUT_SLACK, TIMEOUT_STEP)
+        self._check(team1, team2, 'new_match', 0, TIMEOUT_SLACK, TIMEOUT_STEP)
 
         # Setup the race config
         logging.info('Setting up race')
@@ -332,29 +330,23 @@ class Match:
                 #heatmap_team2 = [race.render_data[i].instance for i in range(1, len(race.render_data), 2)]
 
             # Have each team produce actions (in parallel)
-            if t1_can_act:
-                if t1_type == 'image':
-                    team1_actions_delayed = self._r(team1.act)(team1_state, team1_images)
-                else:
-                    team1_actions_delayed = self._r(team1.act)(team1_state, team2_state, soccer_state)
 
-            if t2_can_act:
-                if t2_type == 'image':
-                    team2_actions_delayed = self._r(team2.act)(team2_state, team2_images)
-                else:
-                    team2_actions_delayed = self._r(team2.act)(team2_state, team1_state, soccer_state)
+            if t1_type == 'image':
+                team1_actions_delayed = self._r(team1.act)(team1_state, team1_images)
+            else:
+                team1_actions_delayed = self._r(team1.act)(team1_state, team2_state, soccer_state)
+
+            if t2_type == 'image':
+                team2_actions_delayed = self._r(team2.act)(team2_state, team2_images)
+            else:
+                team2_actions_delayed = self._r(team2.act)(team2_state, team1_state, soccer_state)
 
             # Wait for the actions to finish
-            team1_actions = self._g(team1_actions_delayed) if t1_can_act else None
-            team2_actions = self._g(team2_actions_delayed) if t2_can_act else None
+            team1_actions = self._g(team1_actions_delayed) 
+            team2_actions = self._g(team2_actions_delayed) 
 
-            new_t1_can_act, new_t2_can_act = self._check(team1, team2, 'act', it, timeout)
-            if not new_t1_can_act and t1_can_act and verbose:
-                print('Team 1 timed out')
-            if not new_t2_can_act and t2_can_act and verbose:
-                print('Team 2 timed out')
+            self._check(team1, team2, 'act', it, timeout)
 
-            t1_can_act, t2_can_act = new_t1_can_act, new_t2_can_act
 
             # Assemble the actions
             actions = []
