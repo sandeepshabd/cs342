@@ -160,15 +160,15 @@ class Match:
 
         return aimpoint
 
-    def collect(_,is400, player,im, puck_flag, pt, instance=None):
+    def collect(_,is400, playerNumber,im, puck_flag, pt, instance=None):
         global file_no 
         id = file_no 
         file_no += 1
         
         if(is400):
-            fn = path.join('/content/cs342/final/data400/', player,'/ice_hockey' + '_%05d' % id)
+            fn = path.join('/content/cs342/final/data400/'+ '%05d' % playerNumber +'/ice_hockey' + '_%05d' % id)
         else:
-            fn = path.join('/content/cs342/final/data/', player,'/ice_hockey' + '_%05d' % id)
+            fn = path.join('/content/cs342/final/data/'+  '%05d' % playerNumber +'/ice_hockey' + '_%05d' % id)
         print('file formed')
         Image.fromarray(im).save(fn + '.png')
         print('image saved')
