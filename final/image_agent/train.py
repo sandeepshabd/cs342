@@ -14,7 +14,8 @@ import torchvision.transforms.functional as TF
 from PIL import  ImageDraw
 
 def train(args):
-    model = Planner().to(torch.device('cuda' if torch.cuda.is_available() else 'cpu'))
+    device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+    model = Planner().to(torch.device('cuda' if torch.cuda.is_available() else 'cpu')).to(device)
     basic_transform = 'Compose([ColorJitter(0.9, 0.9, 0.9, 0.1), RandomHorizontalFlip(), ToTensor()])'
 
     print(model)
@@ -42,7 +43,7 @@ def train(args):
         losses = []
 
         for img, label in train_data:
-            img, label = img.to(model.device), label.to(model.device)
+            img, label = img.to(device), label.to(device)
             h, w = img.shape[2:]
 
             pred = model(img)
