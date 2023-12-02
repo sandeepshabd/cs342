@@ -166,9 +166,9 @@ class Match:
         file_no += 1
         
         if(is400):
-            fn = path.join('/content/cs342/final/data400/'+ '%05d' % playerNumber +'/ice_hockey' + '_%05d' % id)
+            fn = path.join('/content/cs342/final/data400/'+ '%d' % playerNumber +'/ice_hockey' + '_%05d' % id)
         else:
-            fn = path.join('/content/cs342/final/data/'+  '%05d' % playerNumber +'/ice_hockey' + '_%05d' % id)
+            fn = path.join('/content/cs342/final/data/'+  '%d' % playerNumber +'/ice_hockey' + '_%05d' % id)
         print('file formed')
         Image.fromarray(im).save(fn + '.png')
         print('image saved')
