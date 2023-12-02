@@ -367,8 +367,7 @@ class Match:
             xyz[1] = y
             xyz[2] = z
             
-            aim_point_300_400 = np.clip(aim_point_300_400, [0, 0], [400, 300])
-            aim_point_300_400_2 = np.clip(aim_point_300_400_2, [0, 0], [400, 300])
+
             
             proj = np.array(team1_state[0]['camera']['projection']).T
             view = np.array(team1_state[0]['camera']['view']).T
@@ -379,6 +378,12 @@ class Match:
             #aim_point_world = self._point_on_track(kart.distance_down_track+TRACK_OFFSET, TRACK_NAME)
             aim_point_image, out_of_frame = self._to_image(xyz, proj, view)  
             #aim_point_image2, out_of_frame = self._to_image(xyz, proj2, view2) 
+            
+            aim_point_300_400 = self._to_image300_400(xyz, proj, view)
+            aim_point_300_400_2 = self._to_image300_400(xyz, proj2, view2)
+            
+            aim_point_300_400 = np.clip(aim_point_300_400, [0, 0], [400, 300])
+            aim_point_300_400_2 = np.clip(aim_point_300_400_2, [0, 0], [400, 300])
             
             if heatmap_team1:
                 # Right shift the entire array at once
