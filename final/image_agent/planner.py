@@ -11,45 +11,55 @@ def spatial_argmax(logit):
                         (weights.sum(2) * torch.linspace(-1, 1, logit.size(1)).to(logit.device)[None]).sum(1)), 1)
     
                         
-class Planner(torch.nn.Module):
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+class Planner(nn.Module):
     def __init__(self, channels=[16, 32, 64, 32]):
-        super().__init__()
+        super(Planner, self).__init__()
 
-        conv_block = lambda c, h: [torch.nn.BatchNorm2d(h), torch.nn.Conv2d(h, c, 5, 2, 2), torch.nn.ReLU(True)]
-        upconv_block = lambda c, h: [torch.nn.BatchNorm2d(h), torch.nn.ConvTranspose2d(h, c, 4, 2, 1),
-                                     torch.nn.ReLU(True)]
+        self.conv_layers = self._make_layers(channels, self._conv_block)
+        self.upconv_layers = self._make_layers(channels[::-1], self._upconv_block, reverse=True)
 
-        h, _conv, _upconv = 3, [], []
-        for c in channels:
-            _conv += conv_block(c, h)
-            h = c
+        self.normalization_mean = torch.FloatTensor([0.4519, 0.5590, 0.6204]).view(1, 3, 1, 1)
+        self.normalization_std = torch.FloatTensor([0.0012, 0.0018, 0.0020]).view(1, 3, 1, 1)
 
-        for c in channels[:-3:-1]:
-            _upconv += upconv_block(c, h)
-            h = c
+    def _conv_block(self, in_channels, out_channels):
+        return nn.Sequential(
+            nn.BatchNorm2d(in_channels),
+            nn.Conv2d(in_channels, out_channels, 5, 2, 2),
+            nn.ReLU(inplace=True)
+        )
 
-        _upconv += [torch.nn.BatchNorm2d(h), torch.nn.Conv2d(h, 1, 1, 1, 0)]
+    def _upconv_block(self, in_channels, out_channels):
+        return nn.Sequential(
+            nn.BatchNorm2d(in_channels),
+            nn.ConvTranspose2d(in_channels, out_channels, 4, 2, 1),
+            nn.ReLU(inplace=True)
+        )
 
-        self._conv = torch.nn.Sequential(*_conv)
-        self._upconv = torch.nn.Sequential(*_upconv)   
-        self._mean = torch.FloatTensor([0.4519, 0.5590, 0.6204])
-        self._std = torch.FloatTensor([0.0012, 0.0018, 0.0020])
+    def _make_layers(self, channels, block_fn, reverse=False):
+        layers = []
+        in_channels = 3
+        for out_channels in channels[:-1] if reverse else channels:
+            layers.append(block_fn(in_channels, out_channels))
+            in_channels = out_channels
+        if reverse:
+            layers.append(nn.Conv2d(in_channels, 1, 1))
+        return nn.Sequential(*layers)
 
     def forward(self, img):
-        
-        img = (img - self._mean[None, :, None, None].to(img.device)) / self._std[None, :, None, None].to(img.device)
-        h = self._conv(img)
-        x = self._upconv(h)
+        normalized_img = (img - self.normalization_mean.to(img.device)) / self.normalization_std.to(img.device)
+        conv_output = self.conv_layers(normalized_img)
+        upconv_output = self.upconv_layers(conv_output)
 
-        output = (1 + spatial_argmax(x.squeeze(1))) 
-        width = img.size(3)
-        height = img.size(2)
-        output = output * torch.as_tensor([width - 1,    height - 1]).float().to(
-            img.device)
+        output = (1 + spatial_argmax(upconv_output.squeeze(1)))
+        width, height = img.size(3), img.size(2)
+        output *= torch.tensor([width - 1, height - 1], dtype=torch.float32, device=img.device)
 
-        return  output #300/400 range
+        return output
 
-        #return(x)
 
 def save_model(model):
     from torch import save
