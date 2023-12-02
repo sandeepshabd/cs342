@@ -60,6 +60,13 @@ def to_native(o):
 class AIRunner:
     agent_type = 'image'
     is_ai = True
+    
+    @staticmethod
+    def _g(f):
+        from .remote import ray
+        if ray is not None and isinstance(f, (ray.types.ObjectRef, ray._raylet.ObjectRef)):
+            return ray.get(f)
+        return f
 
     def new_match(self, team: int, num_players: int) -> list:
         pass
