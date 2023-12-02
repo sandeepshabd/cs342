@@ -298,6 +298,9 @@ class Match:
         
         # Start the match
         logging.info('Starting race')
+        race = self._pystk.Race(race_config)
+        race.start()
+        race.step()
       
         if(self.isRaceRunning == False):
             race = self._pystk.Race(race_config)
