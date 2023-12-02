@@ -1,6 +1,6 @@
 import os
 import numpy as np
-from homework import dense_transforms
+from . import dense_transforms
 import pystk
 
 from torch.utils.data import Dataset, DataLoader
@@ -9,7 +9,7 @@ import torchvision.transforms.functional as TF
 
 RESCUE_TIMEOUT = 30
 TRACK_OFFSET = 15
-DATASET_PATH = 'drive_data'
+DATASET_PATH = '/content/cs342/final/data'
 ON_COLAB = os.environ.get('ON_COLAB', False)
 COLAB_IMAGES = list()
 
