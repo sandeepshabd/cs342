@@ -274,6 +274,8 @@ class Match:
 
         t1_type, *_ = self._g(self._r(team1.info()))
         t2_type, *_ = self._g(self._r(team2.info()))
+        print(team1.info())
+        print(team2.info())
 
         if t1_type == 'image' or t2_type == 'image':
             assert self._use_graphics, 'Need to use_graphics for image agents.'
@@ -404,9 +406,7 @@ class Match:
                                    team1_images=team1_images, team2_images=team2_images)
                 self.collect(True,0,team1_images[0], puck_flag1, aim_point_300_400, heatmap_team1[0])
                 self.collect(True,1,team1_images[1], puck_flag2, aim_point_300_400_2, heatmap_team2[0])
-                
-
-
+ 
                 if verbose and ON_COLAB:
                     from PIL import Image, ImageDraw
                     image = Image.fromarray(self.k.render_data[0].image)
