@@ -181,18 +181,19 @@ class Match:
             print('file formed')
             Image.fromarray(im).save(fn + '.png')
             print('image saved')
+            """
             # Save additional data based on instance_data flag
             if instance_data:
                 # Image.fromarray(instance).save(fn + '_instance' + '.png')
                 # torch.save(instance, fn + '_instance' + '_tensor.pt')
-                with open(fn + '.npy', 'wb') as f:
+               with open(fn + '.npy', 'wb') as f:
                     np.save(f, instance)
             else:
                 with open(fn + '.csv', 'w') as f:
                     # f.write('%0.1f,%0.1f,%0.1f' % (pt[0], pt[1], puck_flag))  # with puck flag
                     print(tuple(pt))
                     f.write('%0.1f,%0.1f' % tuple(pt))
-
+            """
             file_no += 1
     
     
@@ -401,7 +402,7 @@ class Match:
                         if heatmap_team1[0][i][j]  == 8:
                             puck_flag = 1
 
-
+            print(f'puck flag:{puck_flag}')
             if record_fn:
                 self._r(record_fn)(team1_state, team2_state, soccer_state=soccer_state, actions=actions,
                                    team1_images=team1_images, team2_images=team2_images)
