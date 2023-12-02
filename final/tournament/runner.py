@@ -84,7 +84,7 @@ class AIRunner:
         return []
 
     def info(self):
-        return RunnerInfo('state', None, 0)
+        return RunnerInfo('image', None, 0)
 
 
 class TeamRunner:
