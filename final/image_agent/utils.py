@@ -15,6 +15,37 @@ COLAB_IMAGES = list()
 
 print(ON_COLAB)
 
+import numpy as np
+
+def center_to_world(ax, ay, iwidth, iheight, proj, height=0.36983):
+    # Convert image coordinates (ax, ay) to normalized device coordinates (tx, ty)
+    tx, ty = (2 * ax / iwidth - 1), (1 - 2 * ay / iheight)
+
+    # Compute the inverse projection matrix
+    proji = np.linalg.inv(proj)
+
+    # Prepare homogenous coordinates for camera space
+    homocam = np.array([tx, ty, 1.0])
+
+    # Compute intermediate matrix for z prediction
+    pn2 = np.hstack([proji[:, :2], proji[:, 3:]])
+    
+    # Predict the z coordinate in camera space based on estimated puck height
+    numerator = pn2[1:2, :] @ homocam - height * (pn2[3:4, :] @ homocam)
+    denominator = height * proji[3, 2] - proji[1, 2]
+    zpred = numerator / denominator
+
+    # If zpred is negative, the point is behind the camera, so return None
+    if zpred < 0:
+        return None
+
+    # Convert to world coordinates by re-introducing the z coordinate
+    world_pred = proji @ np.array([tx, ty, float(zpred), 1.0])
+    world_pred /= world_pred[3]
+    
+    # Return the (x, y, z) in world coordinates
+    return world_pred[:3].flatten()
+
 
 class SuperTuxDataset(Dataset):
     def __init__(self, dataset_path=DATASET_PATH, transform=dense_transforms.ToTensor()):

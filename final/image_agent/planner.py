@@ -1,7 +1,6 @@
 import torch
 import torch.nn.functional as F
 import torch.nn as nn
-from .controller import control
 
 
 def spatial_argmax(logit):
@@ -115,35 +114,3 @@ def load_model():
     r.load_state_dict(load(path.join(path.dirname(path.abspath(__file__)), 'planner.th'), map_location='cpu'))
     return r
 
-def test_planner(pytux, track, verbose=False):
-    # Load model
-    planner = load_model().eval()
-
-    for t in track:
-        steps, how_far = pytux.rollout(t, control, planner=planner, max_frames=1000, verbose=verbose)
-        print(steps, how_far)
-    pytux.close()
-    
-
-
-if __name__ == '__main__':
-    from .controller import control
-    from .utils import PyTux
-    from argparse import ArgumentParser
-
-
-    def test_planner(args):
-        # Load model
-        planner = load_model().eval()
-        pytux = PyTux()
-        for t in args.track:
-            steps, how_far = pytux.rollout(t, control, planner=planner, max_frames=1000, verbose=args.verbose)
-            print(steps, how_far)
-        pytux.close()
-
-
-    parser = ArgumentParser("Test the planner")
-    parser.add_argument('track', nargs='+')
-    parser.add_argument('-v', '--verbose', action='store_true')
-    args = parser.parse_args()
-    test_planner(args)
