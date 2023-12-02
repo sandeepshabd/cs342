@@ -251,7 +251,15 @@ class Match:
        
         
         logging.debug('timeout {} <? {} {}'.format(timeout, t1, t2))
-        return t1 < timeout[0], t2 < timeout[1]
+        if max(t1, t2) > timeout_slack + n_iter * timeout_step:
+            if t1 > t2:
+                # Team 2 wins because of a timeout
+                return [0, 3], 'Timeout ({:.4f}/iter > {:.4f}/iter)'.format(t1 / n_iter, timeout_step),\
+                       'other team timed out'
+            else:
+                # Team 1 wins because of a timeout
+                return [3, 0], 'other team timed out',\
+                       'Timeout ({:.4f}/iter > {:.4f}/iter)'.format(t2 / n_iter, timeout_step)
 
     def run(self, team1, team2, num_player=1, max_frames=MAX_FRAMES, max_score=3, record_fn=None, timeout=1e10,
             initial_ball_location=[0, 0], initial_ball_velocity=[0, 0], verbose=False):
