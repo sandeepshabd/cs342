@@ -2,17 +2,8 @@ from os import path
 import numpy as np 
 import torch
 
-from final.image_agent.planner import Planner 
+from . import planner 
 
-def load_model():
-    print('calling load model')
-    from torch import load
-    from os import path
-    r = Planner()
-    print('location------>')
-    r.load_state_dict(load(path.join(path.dirname(path.abspath(__file__)), 'planner.th'), map_location='cpu'))
-    print('location--done---->')
-    return r
 
 def limit_period(angle):
     # turn angle into -1 to 1 
@@ -53,7 +44,7 @@ class Team:
         """
         self.team = None
         self.num_players = None
-        self.model = load_model()
+        self.model = planner.load_model()
 
     def new_match(self, team: int, num_players: int) -> list:
         """
