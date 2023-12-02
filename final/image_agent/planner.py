@@ -1,56 +1,67 @@
-
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 
+def compute_spatial_argmax(logit):
 
-
-def spatial_argmax(logit):
-    
+    # Reshape and apply softmax
     weights = F.softmax(logit.view(logit.size(0), -1), dim=-1).view_as(logit)
-    return torch.stack(((weights.sum(1) * torch.linspace(-1, 1, logit.size(2)).to(logit.device)[None]).sum(1),
-                        (weights.sum(2) * torch.linspace(-1, 1, logit.size(1)).to(logit.device)[None]).sum(1)), 1)
     
-                        
-class Planner(torch.nn.Module):
+    # Calculate argmax
+    argmax_x = (weights.sum(1) * torch.linspace(-1, 1, logit.size(2), device=logit.device)).sum(1)
+    argmax_y = (weights.sum(2) * torch.linspace(-1, 1, logit.size(1), device=logit.device)).sum(1)
+    
+    return torch.stack((argmax_x, argmax_y), dim=1)
+
+
+class Planner(nn.Module):
+    """
+    Planner module for spatial planning using convolutional layers.
+    """
     def __init__(self, channels=[16, 32, 64, 32]):
-        super().__init__()
+        super(Planner, self).__init__()
 
-        conv_block = lambda c, h: [torch.nn.BatchNorm2d(h), torch.nn.Conv2d(h, c, 5, 2, 2), torch.nn.ReLU(True)]
-        upconv_block = lambda c, h: [torch.nn.BatchNorm2d(h), torch.nn.ConvTranspose2d(h, c, 4, 2, 1),
-                                     torch.nn.ReLU(True)]
+        # Define convolutional blocks
+        def conv_block(in_channels, out_channels):
+            return [nn.BatchNorm2d(out_channels), nn.Conv2d(out_channels, in_channels, 5, 2, 2), nn.ReLU(True)]
 
-        h, _conv, _upconv = 3, [], []
-        for c in channels:
-            _conv += conv_block(c, h)
-            h = c
+        # Define upconvolutional blocks
+        def upconv_block(in_channels, out_channels):
+            return [nn.BatchNorm2d(out_channels), nn.ConvTranspose2d(out_channels, in_channels, 4, 2, 1),
+                    nn.ReLU(True)]
 
-        for c in channels[:-3:-1]:
-            _upconv += upconv_block(c, h)
-            h = c
+        # Building convolutional and upconvolutional layers
+        current_channels, conv_layers, upconv_layers = 3, [], []
+        for channel in channels:
+            conv_layers += conv_block(channel, current_channels)
+            current_channels = channel
 
-        _upconv += [torch.nn.BatchNorm2d(h), torch.nn.Conv2d(h, 1, 1, 1, 0)]
+        for channel in reversed(channels[:-2]):
+            upconv_layers += upconv_block(channel, current_channels)
+            current_channels = channel
 
-        self._conv = torch.nn.Sequential(*_conv)
-        self._upconv = torch.nn.Sequential(*_upconv)   
-        self._mean = torch.FloatTensor([0.4519, 0.5590, 0.6204])
-        self._std = torch.FloatTensor([0.0012, 0.0018, 0.0020])
+        upconv_layers += [nn.BatchNorm2d(current_channels), nn.Conv2d(current_channels, 1, 1, 1, 0)]
+
+        self.conv = nn.Sequential(*conv_layers)
+        self.upconv = nn.Sequential(*upconv_layers)
+        
+        # Normalization parameters
+        self.mean = torch.FloatTensor([0.4519, 0.5590, 0.6204])
+        self.std = torch.FloatTensor([0.0012, 0.0018, 0.0020])
 
     def forward(self, img):
-        
-        img = (img - self._mean[None, :, None, None].to(img.device)) / self._std[None, :, None, None].to(img.device)
-        h = self._conv(img)
-        x = self._upconv(h)
 
-        output = (1 + spatial_argmax(x.squeeze(1))) 
-        width = img.size(3)
-        height = img.size(2)
-        output = output * torch.as_tensor([width - 1,    height - 1]).float().to(
-            img.device)
+        # Normalize the image
+        norm_img = (img - self.mean[None, :, None, None].to(img.device)) / self.std[None, :, None, None].to(img.device)
+        conv_output = self.conv(norm_img)
+        upconv_output = self.upconv(conv_output)
 
-        return  output #300/400 range
+        spatial_argmax = (1 + compute_spatial_argmax(upconv_output.squeeze(1)))
+        width, height = img.size(3), img.size(2)
+        output = spatial_argmax * torch.as_tensor([width - 1, height - 1], dtype=torch.float32, device=img.device)
 
-        #return(x)
-
+        return output  # Output in 300/400 range
+    
 def save_model(model):
     from torch import save
     from os import path
@@ -58,16 +69,10 @@ def save_model(model):
         return save(model.state_dict(), path.join(path.dirname(path.abspath(__file__)), 'planner.th'))
     raise ValueError("model type '%s' not supported!" % str(type(model)))
 
+
 def load_model():
     from torch import load
     from os import path
     r = Planner()
-    print('----1-----')
     r.load_state_dict(load(path.join(path.dirname(path.abspath(__file__)), 'planner.th'), map_location='cpu'))
-    print('----2-----')
     return r
-
-
-
-
-
