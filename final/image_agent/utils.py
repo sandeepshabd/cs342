@@ -1,85 +1,63 @@
-import os
 import numpy as np
-from . import dense_transforms
 import pystk
-from PIL import Image
-from glob import glob
-from os import path
+import torch
 
 from torch.utils.data import Dataset, DataLoader
 import torchvision.transforms.functional as TF
-
+from . import dense_transforms
 
 RESCUE_TIMEOUT = 30
 TRACK_OFFSET = 15
-DATASET_PATH = '/content/cs342/final/data400/1'
-ON_COLAB = os.environ.get('ON_COLAB', False)
-COLAB_IMAGES = list()
 
-print(ON_COLAB)
+DATASET_PATH = '/content/cs342/final/data400/1'               
+#DATASET_PATH = '/content/cs342/final/data_instance'     #render_data instance path
 
-import numpy as np
-
-def center_to_world(ax, ay, iwidth, iheight, proj, height=0.36983):
-    # Convert image coordinates (ax, ay) to normalized device coordinates (tx, ty)
-    tx, ty = (2 * ax / iwidth - 1), (1 - 2 * ay / iheight)
-
-    # Compute the inverse projection matrix
-    proji = np.linalg.inv(proj)
-
-    # Prepare homogenous coordinates for camera space
-    homocam = np.array([tx, ty, 1.0])
-
-    # Compute intermediate matrix for z prediction
-    pn2 = np.hstack([proji[:, :2], proji[:, 3:]])
-    
-    # Predict the z coordinate in camera space based on estimated puck height
-    numerator = pn2[1:2, :] @ homocam - height * (pn2[3:4, :] @ homocam)
-    denominator = height * proji[3, 2] - proji[1, 2]
-    zpred = numerator / denominator
-
-    # If zpred is negative, the point is behind the camera, so return None
-    if zpred < 0:
-        return None
-
-    # Convert to world coordinates by re-introducing the z coordinate
-    world_pred = proji @ np.array([tx, ty, float(zpred), 1.0])
-    world_pred /= world_pred[3]
-    
-    # Return the (x, y, z) in world coordinates
-    return world_pred[:3].flatten()
-
+#Dec 9, 2021
+#data2 = torch.from_numpy(data.astype(int))
 
 class SuperTuxDataset(Dataset):
     def __init__(self, dataset_path=DATASET_PATH, transform=dense_transforms.ToTensor()):
-
+        from PIL import Image
+        from glob import glob
+        from os import path
+        
         self.data = []
-        for f in glob(path.join(dataset_path, '*.csv')):
-            i = Image.open(f.replace('.csv', '.png'))
-            i.load()
-            self.data.append((i, np.loadtxt(f, dtype=np.float32, delimiter=',')))
-           
+        
+        
+        for f in glob(path.join(dataset_path, '*.csv')):   #change to npy to load render_data instance
+            
+            data_image = Image.open(f.replace('.csv', '.png'))   #change to npy to load render_data instance
+            data_image.load()
+            self.data.append(( data_image,    np.loadtxt(f, dtype=np.float32, delimiter=',')  ))
+            
+            #uncomment below to load render_data instance
+            #data_instance = torch.from_numpy(np.load(f).astype(int)) # render_data instance
+            #self.data.append((     data_image,    data_instance  ))
+        
         self.transform = transform
-
+        #self.totensor = dense_transforms.ToTensor()
+    
     def __len__(self):
         return len(self.data)
 
     def __getitem__(self, idx):
+       
         data = self.data[idx]
         data = self.transform(*data)
+
+        #uncomment below to load render_data instance
+        #im = data[0]
+        #label = data[1]
+        #im = self.transform(im)
+        #im = self.totensor(im)
+        #return im[0], label
+      
         return data
 
 
 def load_data(dataset_path=DATASET_PATH, transform=dense_transforms.ToTensor(), num_workers=0, batch_size=128):
     dataset = SuperTuxDataset(dataset_path, transform=transform)
     return DataLoader(dataset, num_workers=num_workers, batch_size=batch_size, shuffle=True, drop_last=True)
-
-
-def show_on_colab():
-    from moviepy.editor import ImageSequenceClip
-    from IPython.display import display
-
-    display(ImageSequenceClip(COLAB_IMAGES, fps=15).ipython_display(width=512, autoplay=True, loop=True, maxduration=120))
 
 
 class PyTux:
@@ -124,66 +102,78 @@ class PyTux:
                               data
         :return: Number of steps played
         """
+        print ("INSIDE OF ROLLOUT")
+        print (f'self.k is {self.k}')
         if self.k is not None and self.k.config.track == track:
             self.k.restart()
             self.k.step()
+            print ("Line 85")
         else:
+            print ("Line 87")
+            print (f'self.k is {self.k}')
             if self.k is not None:
+                print ("Stopping")
                 self.k.stop()
                 del self.k
             config = pystk.RaceConfig(num_kart=1, laps=1, track=track)
             config.players[0].controller = pystk.PlayerConfig.Controller.PLAYER_CONTROL
+            config.mode = config.RaceMode.SOCCER
 
+            print ("Line 96")
             self.k = pystk.Race(config)
+            print (f'self.k is {self.k}')
+            print ("Line 98")
             self.k.start()
+            print ("Line 99")
             self.k.step()
+            print ("END OF WHILE LOOP IN ROLLOUT")
 
         state = pystk.WorldState()
         track = pystk.Track()
 
         last_rescue = 0
 
-        if verbose and not ON_COLAB:
+        if verbose:
             import matplotlib.pyplot as plt
             fig, ax = plt.subplots(1, 1)
-        elif verbose and ON_COLAB:
-            global COLAB_IMAGES
-            COLAB_IMAGES = list()
 
+        print ("UPDATING STATE LINE 116 utils.py")
         for t in range(max_frames):
-
-            state.update()
-            track.update()
-
+            print ("Inside FOR loop line 118")
+            state.update()  
+            print ("Updated state")
+            #track.update()  #rollout calls this method and exits (Nov 23, 2021)
+            print ("Did updates")
             kart = state.players[0].kart
-
-            if np.isclose(kart.overall_distance / track.length, 1.0, atol=2e-3):
-                if verbose:
-                    print("Finished at t=%d" % t)
-                break
+            print (track.length)
+            #if np.isclose(kart.overall_distance / track.length, 1.0, atol=2e-3):
+             #   print ("inside loop at 125")
+              #  if verbose:
+               #     print("Finished at t=%d" % t)
+                #break
 
             proj = np.array(state.players[0].camera.projection).T
             view = np.array(state.players[0].camera.view).T
 
             aim_point_world = self._point_on_track(kart.distance_down_track+TRACK_OFFSET, track)
             aim_point_image = self._to_image(aim_point_world, proj, view)
-            aim_point = aim_point_image
-
             if data_callback is not None:
+                print ("Calling data_callback, or collect(), to generate data, L135")
                 data_callback(t, np.array(self.k.render_data[0].image), aim_point_image)
 
             if planner:
                 image = np.array(self.k.render_data[0].image)
-                aim_point = planner(TF.to_tensor(image)[None]).squeeze(0).cpu().detach().numpy()
+                aim_point_image = planner(TF.to_tensor(image)[None]).squeeze(0).cpu().detach().numpy()
 
             current_vel = np.linalg.norm(kart.velocity)
-            action = controller(aim_point, current_vel)
+            print ("CALLING THE CONTROLLER LINE 142")
+            action = controller(aim_point_image, current_vel)
 
             if current_vel < 1.0 and t - last_rescue > RESCUE_TIMEOUT:
                 last_rescue = t
                 action.rescue = True
 
-            if verbose and not ON_COLAB:
+            if verbose:
                 ax.clear()
                 ax.imshow(self.k.render_data[0].image)
                 WH2 = np.array([self.config.screen_width, self.config.screen_height]) / 2
@@ -193,27 +183,9 @@ class PyTux:
                     ap = self._point_on_track(kart.distance_down_track + TRACK_OFFSET, track)
                     ax.add_artist(plt.Circle(WH2*(1+aim_point_image), 2, ec='g', fill=False, lw=1.5))
                 plt.pause(1e-3)
-            elif verbose and ON_COLAB:
-                from PIL import Image, ImageDraw
-                image = Image.fromarray(self.k.render_data[0].image)
-                draw = ImageDraw.Draw(image)
-
-                WH2 = np.array([self.config.screen_width, self.config.screen_height]) / 2
-
-                p = (aim_point_image + 1) * WH2
-                draw.ellipse((p[0] - 2, p[1] - 2, p[0]+2, p[1]+2), fill=(255, 0, 0))
-                if planner:
-                    p = (aim_point + 1) * WH2
-                    draw.ellipse((p[0] - 2, p[1] - 2, p[0]+2, p[1]+2), fill=(0, 255, 0))
-
-                COLAB_IMAGES.append(np.array(image))
 
             self.k.step(action)
             t += 1
-
-        if verbose and ON_COLAB:
-            show_on_colab()
-
         return t, kart.overall_distance / track.length
 
     def close(self):
@@ -226,50 +198,16 @@ class PyTux:
         pystk.clean()
 
 
-def main(pytux, track, output=DATASET_PATH, n_images=10000, steps_per_track=20000, aim_noise=0.1, vel_noise=5, verbose=False):
+if __name__ == '__main__':
     from .controller import control
+    from argparse import ArgumentParser
     from os import makedirs
 
-    try:
-        makedirs(output)
-    except OSError:
-        pass
 
-    track = [track] if isinstance(track, str) else track
+    def noisy_control(aim_pt, vel):
+        return control(aim_pt + np.random.randn(*aim_pt.shape) * aim_noise,
+                       vel + np.random.randn() * vel_noise)
 
-    for t in track:
-        n, images_per_track = 0, n_images // len(track)
-
-        def collect(_, im, pt):
-            from PIL import Image
-            from os import path
-            nonlocal n
-            id = n if n < images_per_track else np.random.randint(0, n + 1)
-            if id < images_per_track:
-                fn = path.join(output, t + '_%05d' % id)
-                Image.fromarray(im).save(fn + '.png')
-                with open(fn + '.csv', 'w') as f:
-                    f.write('%0.1f,%0.1f' % tuple(pt))
-            n += 1
-
-        # Use 0 noise for the first round
-        _aim_noise, _vel_noise = 0, 0
-
-        while n < steps_per_track:
-            def noisy_control(aim_pt, vel):
-                return control(
-                        aim_pt + np.random.randn(*aim_pt.shape) * _aim_noise,
-                        vel + np.random.randn() * _vel_noise)
-
-            steps, how_far = pytux.rollout(t, noisy_control, max_frames=1000, verbose=verbose, data_callback=collect)
-            print(steps, how_far)
-
-            # Add noise after the first round
-            _aim_noise, _vel_noise = aim_noise, vel_noise
-
-
-if __name__ == '__main__':
-    from argparse import ArgumentParser
 
     parser = ArgumentParser("Collects a dataset for the high-level planner")
     parser.add_argument('track', nargs='+')
@@ -280,7 +218,36 @@ if __name__ == '__main__':
     parser.add_argument('--vel_noise', default=5, type=float)
     parser.add_argument('-v', '--verbose', action='store_true')
     args = parser.parse_args()
-
+    try:
+        makedirs(args.output)
+    except OSError:
+        pass
+    print ("In main line 198, creating pytux object")
+    print (args.track)
     pytux = PyTux()
-    main(pytux, **vars(args))
+    for track in args.track:
+        n, images_per_track = 0, args.n_images // len(args.track)
+        aim_noise, vel_noise = 0, 0
+
+
+        def collect(_, im, pt):
+            from PIL import Image
+            from os import path
+            global n
+            print ("Collect() has been called to generate images")
+            id = n if n < images_per_track else np.random.randint(0, n + 1)
+            if id < images_per_track:
+                fn = path.join(args.output, track + '_%05d' % id)
+                Image.fromarray(im).save(fn + '.png')
+                with open(fn + '.csv', 'w') as f:
+                    f.write('%0.1f,%0.1f' % tuple(pt))
+            n += 1
+
+
+        while n < args.steps_per_track:
+            print ("In while loop calling rollout()")
+            steps, how_far = pytux.rollout(track, noisy_control, max_frames=1000, verbose=args.verbose, data_callback=collect)
+            print(steps, how_far)
+            # Add noise after the first round
+            aim_noise, vel_noise = args.aim_noise, args.vel_noise
     pytux.close()
