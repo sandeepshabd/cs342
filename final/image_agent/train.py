@@ -6,6 +6,7 @@ from . import dense_transforms
 import torch.utils.tensorboard as tb
 import numpy as np
 import torch
+import inspect
 
 from os import path
 import matplotlib.pyplot as plt
@@ -14,6 +15,8 @@ from PIL import  ImageDraw
 
 def train(args):
     model = Planner().to(torch.device('cuda' if torch.cuda.is_available() else 'cpu'))
+    basic_transform = 'Compose([ColorJitter(0.9, 0.9, 0.9, 0.1), RandomHorizontalFlip(), ToTensor()])'
+
     print(model)
 
     train_logger =  None
@@ -25,11 +28,12 @@ def train(args):
 
     loss_fn = torch.nn.L1Loss()  
     optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
-    
-    # Use a secure method to evaluate transforms.
-    transform = getattr(dense_transforms, args.transform) if hasattr(dense_transforms, args.transform) else None
-    print(f'----start bloading data---')
-    train_data = load_data(transform=transform, num_workers=args.num_workers)
+
+    transform = eval(basic_transform, {k: v for k, v in inspect.getmembers(dense_transforms) if inspect.isclass(v)})
+
+    print(f'----start loading data---')
+    print(transform)
+    train_data = load_data(transform=transform, num_workers=4)
     print(f'data loadded size {len(train_data)}')
    
     global_step = 0
