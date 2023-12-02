@@ -135,6 +135,22 @@ class MatchException(Exception):
         self.score, self.msg1, self.msg2 = score, msg1, msg2
 
 
+def _r(cls, f):
+    if hasattr(f, 'remote'):
+        return f.remote
+    if hasattr(f, '__call__'):
+        if hasattr(f.__call__, 'remote'):
+            return f.__call__.remote
+    return f
+
+
+def _g(f):
+    from .remote import ray
+    if ray is not None and isinstance(f, (ray.types.ObjectRef, ray._raylet.ObjectRef)):
+        return ray.get(f)
+    return f
+
+
 class Match:
     """
         Do not create more than one match per process (use ray to create more)
@@ -224,21 +240,7 @@ class Match:
         controller = PlayerConfig.Controller.AI_CONTROL if is_ai else PlayerConfig.Controller.PLAYER_CONTROL
         return PlayerConfig(controller=controller, team=team_id, kart=kart)
 
-    @classmethod
-    def _r(cls, f):
-        if hasattr(f, 'remote'):
-            return f.remote
-        if hasattr(f, '__call__'):
-            if hasattr(f.__call__, 'remote'):
-                return f.__call__.remote
-        return f
 
-    @staticmethod
-    def _g(f):
-        from .remote import ray
-        if ray is not None and isinstance(f, (ray.types.ObjectRef, ray._raylet.ObjectRef)):
-            return ray.get(f)
-        return f
 
     def _check(self, team1, team2, where, n_iter, timeout):
         _, error, t1 = self._g(self._r(team1.info)())
@@ -254,7 +256,6 @@ class Match:
         logging.debug('timeout {} <? {} {}'.format(timeout, t1, t2))
         return t1 < timeout[0], t2 < timeout[1]
 
-    @classmethod
     def run(self, team1, team2, num_player=1, max_frames=MAX_FRAMES, max_score=3, record_fn=None, timeout=1e10,
             initial_ball_location=[0, 0], initial_ball_velocity=[0, 0], verbose=False):
 
@@ -267,11 +268,11 @@ class Match:
             COLAB_IMAGES = list()
 
         # Start a new match
-        t1_cars = self._g(self._r(team1.new_match)(0, num_player)) or ['tux']
-        t2_cars = self._g(self._r(team2.new_match)(1, num_player)) or ['tux']
+        t1_cars = _g(_r(team1.new_match)(0, num_player)) or ['tux']
+        t2_cars = _g(_r(team2.new_match)(1, num_player)) or ['tux']
 
-        t1_type, *_ = self._g(self._r(team1.info())())
-        t2_type, *_ = self._g(self._r(team2.info())())
+        t1_type, *_ = _g(_r(team1.info())())
+        t2_type, *_ = _g(_r(team2.info())())
 
         if t1_type == 'image' or t2_type == 'image':
             assert self._use_graphics, 'Need to use_graphics for image agents.'
