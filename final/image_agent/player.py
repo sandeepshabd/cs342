@@ -48,6 +48,11 @@ class Team:
             coords = dets[0]
             return utils.center_to_world(coords[1], coords[2], 400, 300, proj)[[0, 2]]
         return None
+    
+    def new_match(self, team: int, num_players: int) -> list:
+
+        self.team, self.num_players = team, num_players
+        return ['tux', 'tux']
 
     def compute_aim(self, puck, kart, front):
         u = front - kart

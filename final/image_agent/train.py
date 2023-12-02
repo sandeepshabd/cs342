@@ -18,7 +18,7 @@ def train(args):
 
     model = model.to(device)
 
-    print(model)
+
 
     if args.continue_training:
         model.load_state_dict(torch.load(path.join(path.dirname(path.abspath(__file__)), 'planner.th')))
