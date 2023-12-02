@@ -16,7 +16,9 @@ def train(args):
     model = Planner().to(torch.device('cuda' if torch.cuda.is_available() else 'cpu'))
     print(model)
 
-    train_logger = tb.SummaryWriter(path(args.log_dir, 'train')) if args.log_dir else None
+    train_logger =  None
+    if args.log_dir is not None:
+        train_logger = tb.SummaryWriter(path.join(args.log_dir, 'train'))
 
     if args.continue_training:
         model.load_state_dict(torch.load(path(__file__).resolve().parent / 'planner.th'))
@@ -42,7 +44,7 @@ def train(args):
 
             loss_val = loss_fn(pred, xy)
 
-            if train_logger and global_step % 100 == 0:
+            if train_logger and global_step % 10 == 0:
                 with torch.no_grad():  # Saves memory and computations
                     train_logger.add_scalar('loss', loss_val.item(), global_step)
                     log(train_logger, img, label, pred, global_step)
