@@ -400,7 +400,7 @@ class Match:
             if record_fn:
                 self._r(record_fn)(team1_state, team2_state, soccer_state=soccer_state, actions=actions,
                                    team1_images=team1_images, team2_images=team2_images)
-                self.collect(team1_images[0], puck_flag, aim_point_image)
+                self.collect(team1_images[0], puck_flag, aim_point_image, heatmap_team1[0])
 
                 if verbose and ON_COLAB:
                     from PIL import Image, ImageDraw
