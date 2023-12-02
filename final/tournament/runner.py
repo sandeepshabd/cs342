@@ -58,25 +58,9 @@ def to_native(o):
 
 
 class AIRunner:
-    agent_type = 'image'
+    agent_type = 'state'
     is_ai = True
-    
-    @staticmethod
-    def _g(f):
-        from .remote import ray
-        if ray is not None and isinstance(f, (ray.types.ObjectRef, ray._raylet.ObjectRef)):
-            return ray.get(f)
-        return f
-    
-    @classmethod
-    def _r(cls, f):
-        if hasattr(f, 'remote'):
-            return f.remote
-        if hasattr(f, '__call__'):
-            if hasattr(f.__call__, 'remote'):
-                return f.__call__.remote
-        return f
-
+ 
     def new_match(self, team: int, num_players: int) -> list:
         pass
 
@@ -84,7 +68,7 @@ class AIRunner:
         return []
 
     def info(self):
-        return RunnerInfo('image', None, 0)
+        return RunnerInfo('state', None, 0)
 
 
 class TeamRunner:
