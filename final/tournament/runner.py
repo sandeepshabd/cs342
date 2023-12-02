@@ -270,7 +270,7 @@ class Match:
             assert self._use_graphics, 'Need to use_graphics for image agents.'
 
         # Deal with crashes
-        t1_can_act, t2_can_act = self._check(team1, team2, 'new_match', 0, timeout)
+        t1_can_act, t2_can_act = self._check(team1, team2, 'new_match', 0, TIMEOUT_SLACK, TIMEOUT_STEP)
 
         # Setup the race config
         logging.info('Setting up race')
