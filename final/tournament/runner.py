@@ -214,11 +214,14 @@ class Match:
             logging.basicConfig(level=logging_level)
 
         # Fire up pystk
+        print("self._use_graphics")
+        print(self._use_graphics)
         self._use_graphics = use_graphics
         if use_graphics:
             graphics_config = self._pystk.GraphicsConfig.hd()
             graphics_config.screen_width = 400
             graphics_config.screen_height = 300
+            print("graphics initialized")
         else:
             graphics_config = self._pystk.GraphicsConfig.none()
 
