@@ -58,15 +58,16 @@ def save_model(model):
         return save(model.state_dict(), path.join(path.dirname(path.abspath(__file__)), 'planner.th'))
     raise ValueError("model type '%s' not supported!" % str(type(model)))
 
-
 def load_model():
-    print('calling load model')
     from torch import load
     from os import path
     r = Planner()
-    print('location------>')
-    print(path.join(path.dirname(path.abspath(__file__)), 'planner.th'), map_location='cpu')
+    print('----1-----')
     r.load_state_dict(load(path.join(path.dirname(path.abspath(__file__)), 'planner.th'), map_location='cpu'))
+    print('----2-----')
     return r
+
+
+
 
 
