@@ -335,8 +335,8 @@ class Match:
                 team2_images = [np.array(race.render_data[i].image) for i in range(1, len(race.render_data), 2)]
                 heatmap_team1 = [race.render_data[i].instance for i in range(0, len(race.render_data), 2)]
                 #heatmap_team2 = [race.render_data[i].instance for i in range(1, len(race.render_data), 2)]
-                print("heatmap")
-                print(heatmap_team1[0])
+                #print("heatmap")
+                #print(heatmap_team1[0])
             # Have each team produce actions (in parallel)
 
             if t1_type == 'image':
@@ -410,7 +410,7 @@ class Match:
             if record_fn:
                 self._r(record_fn)(team1_state, team2_state, soccer_state=soccer_state, actions=actions,
                                    team1_images=team1_images, team2_images=team2_images)
-                self.collect(team1_images[0], puck_flag, aim_point_image, heatmap_team1[0])
+                self.collect(team1_images[0], puck_flag, aim_point_300_400, heatmap_team1[0])
 
                 if verbose and ON_COLAB:
                     from PIL import Image, ImageDraw
