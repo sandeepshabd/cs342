@@ -135,7 +135,7 @@ class MatchException(Exception):
         self.score, self.msg1, self.msg2 = score, msg1, msg2
 
 
-def _r(cls, f):
+def r( f):
     if hasattr(f, 'remote'):
         return f.remote
     if hasattr(f, '__call__'):
@@ -144,7 +144,7 @@ def _r(cls, f):
     return f
 
 
-def _g(f):
+def g(f):
     from .remote import ray
     if ray is not None and isinstance(f, (ray.types.ObjectRef, ray._raylet.ObjectRef)):
         return ray.get(f)
@@ -268,11 +268,11 @@ class Match:
             COLAB_IMAGES = list()
 
         # Start a new match
-        t1_cars = _g(_r(team1.new_match)(0, num_player)) or ['tux']
-        t2_cars = _g(_r(team2.new_match)(1, num_player)) or ['tux']
+        t1_cars = g(r(team1.new_match)(0, num_player)) or ['tux']
+        t2_cars = g(r(team2.new_match)(1, num_player)) or ['tux']
 
-        t1_type, *_ = _g(_r(team1.info())())
-        t2_type, *_ = _g(_r(team2.info())())
+        t1_type, *_ = g(r(team1.info())())
+        t2_type, *_ = g(r(team2.info())())
 
         if t1_type == 'image' or t2_type == 'image':
             assert self._use_graphics, 'Need to use_graphics for image agents.'
