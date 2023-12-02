@@ -270,8 +270,8 @@ class Match:
         t1_cars = self._g(self._r(team1.new_match)(0, num_player)) or ['tux']
         t2_cars = self._g(self._r(team2.new_match)(1, num_player)) or ['tux']
 
-        t1_type, *_ = self._g(self._r(team1.info)())
-        t2_type, *_ = self._g(self._r(team2.info)())
+        t1_type, *_ = self._g(self._r(team1.info())())
+        t2_type, *_ = self._g(self._r(team2.info())())
 
         if t1_type == 'image' or t2_type == 'image':
             assert self._use_graphics, 'Need to use_graphics for image agents.'
