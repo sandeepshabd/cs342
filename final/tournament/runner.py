@@ -301,13 +301,6 @@ class Match:
         race = self._pystk.Race(race_config)
         race.start()
         race.step()
-      
-        if(self.isRaceRunning == False):
-            race = self._pystk.Race(race_config)
-            race.start()
-            self.isRaceRunning = True
-            race.step()
-        
 
         state = self._pystk.WorldState()
         state.update()
