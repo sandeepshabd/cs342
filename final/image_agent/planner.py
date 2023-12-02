@@ -1,5 +1,3 @@
-
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -17,7 +15,9 @@ def compute_spatial_argmax(logit):
 
 
 class Planner(nn.Module):
-
+    """
+    Planner module for spatial planning using convolutional layers.
+    """
     def __init__(self, channels=[16, 32, 64, 32]):
         super(Planner, self).__init__()
 
@@ -61,4 +61,19 @@ class Planner(nn.Module):
         output = spatial_argmax * torch.as_tensor([width - 1, height - 1], dtype=torch.float32, device=img.device)
 
         return output  # Output in 300/400 range
+    
+def save_model(model):
+    from torch import save
+    from os import path
+    if isinstance(model, Planner):
+        return save(model.state_dict(), path.join(path.dirname(path.abspath(__file__)), 'planner.th'))
+    raise ValueError("model type '%s' not supported!" % str(type(model)))
+
+
+def load_model():
+    from torch import load
+    from os import path
+    r = Planner()
+    r.load_state_dict(load(path.join(path.dirname(path.abspath(__file__)), 'planner.th'), map_location='cpu'))
+    return r
 
