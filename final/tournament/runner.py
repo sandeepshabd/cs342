@@ -190,6 +190,7 @@ class Match:
             else:
                 with open(fn + '.csv', 'w') as f:
                     # f.write('%0.1f,%0.1f,%0.1f' % (pt[0], pt[1], puck_flag))  # with puck flag
+                    print(tuple(pt))
                     f.write('%0.1f,%0.1f' % tuple(pt))
 
             file_no += 1
@@ -329,7 +330,8 @@ class Match:
                 team2_images = [np.array(race.render_data[i].image) for i in range(1, len(race.render_data), 2)]
                 heatmap_team1 = [race.render_data[i].instance for i in range(0, len(race.render_data), 2)]
                 #heatmap_team2 = [race.render_data[i].instance for i in range(1, len(race.render_data), 2)]
-
+                print("heatmap")
+                print(heatmap_team1[0])
             # Have each team produce actions (in parallel)
 
             if t1_type == 'image':
