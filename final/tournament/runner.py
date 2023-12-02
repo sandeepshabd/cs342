@@ -178,8 +178,9 @@ class Match:
                 base_dir = '/content/cs342/final/data_instance/' if instance_data else '/content/cs342/final/data/'
 
             fn = path.join(base_dir, 'ice_hockey' + '_%05d' % id)
+            print('file formed')
             Image.fromarray(im).save(fn + '.png')
-
+            print('image saved')
             # Save additional data based on instance_data flag
             if instance_data:
                 # Image.fromarray(instance).save(fn + '_instance' + '.png')
