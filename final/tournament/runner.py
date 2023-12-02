@@ -250,7 +250,7 @@ class Match:
         
        
         
-        logging.debug('timeout {} <? {} {}'.format(timeout_slack + n_iter * timeout_step, t1, t2)))
+        logging.debug('timeout {} <? {} {}'.format(timeout_slack + n_iter * timeout_step, t1, t2))
         if max(t1, t2) > timeout_slack + n_iter * timeout_step:
             if t1 > t2:
                 # Team 2 wins because of a timeout
