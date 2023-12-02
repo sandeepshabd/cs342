@@ -401,8 +401,6 @@ class Match:
                         if heatmap_team1[0][i][j]  == 8:
                             puck_flag = 1
 
-                # Use numpy to check if any element equals 8
-                puck_flag = int(np.any(heatmap_team1[0] == 8))
 
             if record_fn:
                 self._r(record_fn)(team1_state, team2_state, soccer_state=soccer_state, actions=actions,
