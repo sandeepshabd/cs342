@@ -157,37 +157,37 @@ class Match:
 
         return aimpoint
 
-def collect(_, im, puck_flag, pt, instance=None):
-    global file_no 
-    id = file_no 
-    divide_data = False  
-    save_data = True     
-    instance_data = False  
+    def collect(_, im, puck_flag, pt, instance=None):
+        global file_no 
+        id = file_no 
+        divide_data = False  
+        save_data = True     
+        instance_data = False  
 
-    if save_data:
-        # Define base directory based on puck_flag and divide_data
-        if puck_flag and divide_data:
-            base_dir = '/content/cs342/final/data_YesPuck/'
-        elif not puck_flag and divide_data:
-            base_dir = '/content/cs342/final/data_NoPuck/'
-        else:
-            base_dir = '/content/cs342/final/data_instance/' if instance_data else '/content/cs342/final/data/'
+        if save_data:
+            # Define base directory based on puck_flag and divide_data
+            if puck_flag and divide_data:
+                base_dir = '/content/cs342/final/data_YesPuck/'
+            elif not puck_flag and divide_data:
+                base_dir = '/content/cs342/final/data_NoPuck/'
+            else:
+                base_dir = '/content/cs342/final/data_instance/' if instance_data else '/content/cs342/final/data/'
 
-        fn = path.join(base_dir, 'ice_hockey' + '_%05d' % id)
-        Image.fromarray(im).save(fn + '.png')
+            fn = path.join(base_dir, 'ice_hockey' + '_%05d' % id)
+            Image.fromarray(im).save(fn + '.png')
 
-        # Save additional data based on instance_data flag
-        if instance_data:
-            # Image.fromarray(instance).save(fn + '_instance' + '.png')
-            # torch.save(instance, fn + '_instance' + '_tensor.pt')
-            with open(fn + '.npy', 'wb') as f:
-                np.save(f, instance)
-        else:
-            with open(fn + '.csv', 'w') as f:
-                # f.write('%0.1f,%0.1f,%0.1f' % (pt[0], pt[1], puck_flag))  # with puck flag
-                f.write('%0.1f,%0.1f' % tuple(pt))
+            # Save additional data based on instance_data flag
+            if instance_data:
+                # Image.fromarray(instance).save(fn + '_instance' + '.png')
+                # torch.save(instance, fn + '_instance' + '_tensor.pt')
+                with open(fn + '.npy', 'wb') as f:
+                    np.save(f, instance)
+            else:
+                with open(fn + '.csv', 'w') as f:
+                    # f.write('%0.1f,%0.1f,%0.1f' % (pt[0], pt[1], puck_flag))  # with puck flag
+                    f.write('%0.1f,%0.1f' % tuple(pt))
 
-        file_no += 1
+            file_no += 1
     
     
     def __init__(self, use_graphics=True, logging_level=None):
@@ -421,6 +421,7 @@ if __name__ == '__main__':
     from pathlib import Path
     from os import environ
     from . import remote, utils
+    from . import runner
 
     parser = ArgumentParser(description="Play some Ice Hockey. List any number of players, odd players are in team 1, even players team 2.")
     parser.add_argument('-r', '--record_video', help="Do you want to record a video?")
@@ -457,7 +458,7 @@ if __name__ == '__main__':
 
         # Start the match
         #match = Match(use_graphics=team1.agent_type == 'image' or team2.agent_type == 'image')
-        match = Match()
+        match = runner.Match()
         try:
             result = match.run(team1, team2, args.num_players, args.num_frames, max_score=3,
                                initial_ball_location=args.ball_location, initial_ball_velocity=args.ball_velocity,
