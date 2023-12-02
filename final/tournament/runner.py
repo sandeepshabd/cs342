@@ -9,6 +9,8 @@ from argparse import ArgumentParser
 from pathlib import Path
 from os import environ
 from . import remote, utils
+from PIL import Image
+from os import path
 
 TRACK_NAME = 'icy_soccer_field'
 MAX_FRAMES = 1000
@@ -161,6 +163,7 @@ class Match:
     def collect(_, im, puck_flag, pt, instance=None):
         global file_no 
         id = file_no 
+        
         divide_data = False  
         save_data = True     
         instance_data = False  
