@@ -2,7 +2,7 @@ from anyio import Path
 from .planner import Planner, save_model 
 import torch
 from .utils import load_data
-from .. import dense_transforms
+from . import dense_transforms
 import torch.utils.tensorboard as tb
 import numpy as np
 import torch
