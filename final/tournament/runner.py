@@ -341,7 +341,7 @@ class Match:
             team1_actions = self._g(team1_actions_delayed) 
             team2_actions = self._g(team2_actions_delayed) 
 
-            self._check(team1, team2, 'act', it, timeout)
+            self._check(team1, team2, 'act', it, timeout_slack, timeout_step)
 
 
             # Assemble the actions
