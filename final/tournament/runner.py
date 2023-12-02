@@ -405,8 +405,7 @@ class Match:
                 self.collect(True,0,team1_images[0], puck_flag1, aim_point_300_400, heatmap_team1[0])
                 self.collect(True,1,team1_images[1], puck_flag2, aim_point_300_400_2, heatmap_team2[0])
                 
-                self.collect(False,0,team1_images[0], puck_flag1, aim_point_image, heatmap_team1[0])
-                self.collect(False,1,team1_images[1], puck_flag2, aim_point_image, heatmap_team2[0])
+
 
                 if verbose and ON_COLAB:
                     from PIL import Image, ImageDraw
