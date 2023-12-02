@@ -181,7 +181,7 @@ class Match:
             print('file formed')
             Image.fromarray(im).save(fn + '.png')
             print('image saved')
-            """
+            
             # Save additional data based on instance_data flag
             if instance_data:
                 # Image.fromarray(instance).save(fn + '_instance' + '.png')
@@ -189,11 +189,15 @@ class Match:
                with open(fn + '.npy', 'wb') as f:
                     np.save(f, instance)
             else:
-                with open(fn + '.csv', 'w') as f:
-                    # f.write('%0.1f,%0.1f,%0.1f' % (pt[0], pt[1], puck_flag))  # with puck flag
-                    print(tuple(pt))
-                    f.write('%0.1f,%0.1f' % tuple(pt))
-            """
+                try:
+                    with open(fn + '.csv', 'w') as f:
+                        # f.write('%0.1f,%0.1f,%0.1f' % (pt[0], pt[1], puck_flag))  # with puck flag
+                        print(tuple(pt))
+                        f.write('%0.1f,%0.1f' % tuple(pt))
+                        print('saved. to excel')
+                except Exception as e:
+                    print('exception while saving to excel')    
+            
             file_no += 1
     
     
