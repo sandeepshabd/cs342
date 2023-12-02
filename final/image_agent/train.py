@@ -28,7 +28,9 @@ def train(args):
     
     # Use a secure method to evaluate transforms.
     transform = getattr(dense_transforms, args.transform) if hasattr(dense_transforms, args.transform) else None
+    print(f'----start bloading data---')
     train_data = load_data(transform=transform, num_workers=args.num_workers)
+    print(f'data loadded size {len(train_data)}')
    
     global_step = 0
     for epoch in range(args.num_epoch):

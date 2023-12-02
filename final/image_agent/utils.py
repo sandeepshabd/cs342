@@ -57,7 +57,6 @@ class SuperTuxDataset(Dataset):
         for f in glob(path.join(dataset_path, '*.csv')):
             i = Image.open(f.replace('.csv', '.png'))
             i.load()
-            print('------data loaded-------')
             self.data.append((i, np.loadtxt(f, dtype=np.float32, delimiter=',')))
         self.transform = transform
 
@@ -66,7 +65,10 @@ class SuperTuxDataset(Dataset):
 
     def __getitem__(self, idx):
         data = self.data[idx]
-        data = self.transform(*data)
+        if(data):
+            data = self.transform(*data)
+        else:
+            print(f'--data empty:{idx}')
         return data
 
 
