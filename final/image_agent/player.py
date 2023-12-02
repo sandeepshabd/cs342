@@ -6,7 +6,7 @@ import torch.nn.functional as F
 from os import path
 from .import utils
 
-class HockeyPlayer(object):
+class Team:
     TARGET_SPEED = 15
     DRIFT_ANGLE = 20
     BRAKE_ANGLE = 30
@@ -95,8 +95,8 @@ class HockeyPlayer(object):
         if puck is None and self.t < 60:
             puck = np.float32([0, 0])
         elif puck is not None:
-            HockeyPlayer.PUCK = puck
-            HockeyPlayer.PUCK_T = self.t
+            Team.PUCK = puck
+            Team.PUCK_T = self.t
 
         aim, u = self.compute_aim(puck, kart, front)
         return self.get_action(aim, kart, u, vel, norm(front - kart))

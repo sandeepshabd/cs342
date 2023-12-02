@@ -163,42 +163,22 @@ class Match:
     def collect(_, im, puck_flag, pt, instance=None):
         global file_no 
         id = file_no 
+        file_no += 1
         
-        divide_data = False  
-        save_data = True     
-        instance_data = False  
-
-        if save_data:
-            # Define base directory based on puck_flag and divide_data
-            if puck_flag and divide_data:
-                base_dir = '/content/cs342/final/data_YesPuck/'
-            elif not puck_flag and divide_data:
-                base_dir = '/content/cs342/final/data_NoPuck/'
-            else:
-                base_dir = '/content/cs342/final/data_instance/' if instance_data else '/content/cs342/final/data/'
-
-            fn = path.join(base_dir, 'ice_hockey' + '_%05d' % id)
-            print('file formed')
-            Image.fromarray(im).save(fn + '.png')
-            print('image saved')
+        fn = path.join('/content/cs342/final/data/', 'ice_hockey' + '_%05d' % id)
+        print('file formed')
+        Image.fromarray(im).save(fn + '.png')
+        print('image saved')
             
             # Save additional data based on instance_data flag
-            if instance_data:
-                # Image.fromarray(instance).save(fn + '_instance' + '.png')
-                # torch.save(instance, fn + '_instance' + '_tensor.pt')
-               with open(fn + '.npy', 'wb') as f:
-                    np.save(f, instance)
-            else:
-                try:
-                    with open(fn + '.csv', 'w') as f:
-                        # f.write('%0.1f,%0.1f,%0.1f' % (pt[0], pt[1], puck_flag))  # with puck flag
-                        print(tuple(pt))
-                        f.write('%0.1f,%0.1f' % tuple(pt))
-                        print('saved. to excel')
-                except Exception as e:
-                    print('exception while saving to excel')    
-            
-            file_no += 1
+        try:
+            with open(fn + '.csv', 'w') as f:
+                print(tuple(pt))
+                f.write('%0.1f,%0.1f' % tuple(pt))
+                print('saved. to excel')
+        except Exception as e:
+            print('exception while saving to excel')
+        
     
     
     def __init__(self, use_graphics=True, logging_level=None):
