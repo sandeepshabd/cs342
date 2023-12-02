@@ -247,6 +247,7 @@ def collect(_, im, puck_flag, pt, instance=None):
         logging.debug('timeout {} <? {} {}'.format(timeout, t1, t2))
         return t1 < timeout[0], t2 < timeout[1]
 
+    @classmethod
     def run(self, team1, team2, num_player=1, max_frames=MAX_FRAMES, max_score=3, record_fn=None, timeout=TIMEOUT_SLACK,
             timeout_step=TIMEOUT_STEP,initial_ball_location=[0, 0], initial_ball_velocity=[0, 0], verbose= True):
 
