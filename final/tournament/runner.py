@@ -239,7 +239,7 @@ class Match:
         return f
 
 
-    def _check(self, team1, team2, where, n_iter, timeout):
+    def _check(self, team1, team2, where, n_iter, timeout_slack, timeout_step):
         _, error, t1 = self._g(self._r(team1.info)())
         if error:
             raise MatchException([0, 3], 'other team crashed', 'crash during {}: {}'.format(where, error))
