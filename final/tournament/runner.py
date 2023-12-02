@@ -395,6 +395,11 @@ class Match:
             if heatmap_team1:
                 # Right shift the entire array at once
                 heatmap_team1[0] >>= 24
+                puck_flag = 0
+                for i in range (300):
+                    for j in range (400):
+                        if heatmap_team1[0][i][j]  == 8:
+                            puck_flag = 1
 
                 # Use numpy to check if any element equals 8
                 puck_flag = int(np.any(heatmap_team1[0] == 8))
