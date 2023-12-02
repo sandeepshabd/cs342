@@ -58,7 +58,7 @@ class SuperTuxDataset(Dataset):
             i = Image.open(f.replace('.csv', '.png'))
             i.load()
             self.data.append((i, np.loadtxt(f, dtype=np.float32, delimiter=',')))
-            print(self.data)
+           
         self.transform = transform
 
     def __len__(self):
