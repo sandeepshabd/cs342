@@ -67,6 +67,15 @@ class AIRunner:
         if ray is not None and isinstance(f, (ray.types.ObjectRef, ray._raylet.ObjectRef)):
             return ray.get(f)
         return f
+    
+    @classmethod
+    def _r(cls, f):
+        if hasattr(f, 'remote'):
+            return f.remote
+        if hasattr(f, '__call__'):
+            if hasattr(f.__call__, 'remote'):
+                return f.__call__.remote
+        return f
 
     def new_match(self, team: int, num_players: int) -> list:
         pass
