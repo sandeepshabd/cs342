@@ -25,14 +25,13 @@ class Planner(torch.nn.Module):
 
         # Create convolutional layers
         for out_channels in channels:
-            conv_layers.extend(conv_block(in_channels, out_channels))
+            conv_layers += conv_block(in_channels, out_channels)
             in_channels = out_channels
 
-        # Create up-convolutional layers
-        # Assuming channels[:-3:-1] is intended to reverse the channels list except the last element
-        reversed_channels = channels[-2::-1]
+
+        reversed_channels = channels[:-3:-1]
         for out_channels in reversed_channels:
-            upconv_layers.extend(upconv_block(in_channels, out_channels))
+            upconv_layers += upconv_block(in_channels, out_channels)
             in_channels = out_channels
 
 
