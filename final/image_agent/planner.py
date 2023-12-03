@@ -19,19 +19,19 @@ class Planner(torch.nn.Module):
         upconv_block = lambda channel, input_channel: [torch.nn.BatchNorm2d(input_channel), torch.nn.ConvTranspose2d(input_channel, channel, 4, 2, 1),
                                      torch.nn.ReLU(True)]
 
-        input_channel, _conv, _upconv = 3, [], []
+        input_channel, conv_nw, conv_up = 3, [], []
         for channel_out in channels:
-            _conv += conv_block(channel_out, input_channel)
+            conv_nw += conv_block(channel_out, input_channel)
             input_channel = channel_out
 
         for channel_out in channels[:-3:-1]:
-            _upconv += upconv_block(channel_out, input_channel)
+            conv_up += upconv_block(channel_out, input_channel)
             input_channel = channel_out
 
-        _upconv += [torch.nn.BatchNorm2d(input_channel), torch.nn.Conv2d(input_channel, 1, 1, 1, 0)]
+        conv_up += [torch.nn.BatchNorm2d(input_channel), torch.nn.Conv2d(input_channel, 1, 1, 1, 0)]
 
-        self._conv = torch.nn.Sequential(*_conv)
-        self._upconv = torch.nn.Sequential(*_upconv)   
+        self._conv = torch.nn.Sequential(*conv_nw)
+        self._upconv = torch.nn.Sequential(*conv_up)   
  
 
     def forward(self, img):
