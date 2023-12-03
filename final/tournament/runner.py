@@ -253,7 +253,7 @@ class Match:
                     # Team 1 wins because of a timeout
                     return [3, 0], 'other team timed out', 'Timeout ({:.4f}/iter > {:.4f}/iter)'.format(t2 / n_iter, timeout_step)
 
-    def run(self, team1, team2, num_player=1, max_frames=MAX_FRAMES, max_score=3, record_fn=None,
+    def run(self, team1, team2, num_player=1, max_frames=MAX_FRAMES, max_score=10, record_fn=None,
             timeout_slack=TIMEOUT_SLACK, timeout_step=TIMEOUT_STEP, initial_ball_location=[0, 0],
             initial_ball_velocity=[0, 0]):
 
@@ -403,7 +403,7 @@ class Match:
                                    team1_images=team1_images, team2_images=team2_images)
                 self.collect(True,0,team1_images[0], puck_flag1, aim_point_300_400, heatmap_team1[0])
                 self.collect(True,1,team1_images[1], puck_flag2, aim_point_300_400_2, heatmap_team2[0])
- 
+                """
                 if verbose and ON_COLAB:
                     from PIL import Image, ImageDraw
                     image = Image.fromarray(self.k.render_data[0].image)
@@ -415,7 +415,7 @@ class Match:
                     draw.ellipse((p[0] - 2, p[1] - 2, p[0]+2, p[1]+2), fill=(255, 0, 0))
 
                     COLAB_IMAGES.append(np.array(team1_images[0]))
-
+                """
             logging.debug('  race.step  [score = {}]'.format(state.soccer.score))
             if (not race.step([self._pystk.Action(**a) for a in actions]) and num_player) or sum(state.soccer.score) >= max_score:
                 break
@@ -443,7 +443,7 @@ if __name__ == '__main__':
     parser = ArgumentParser(description="Play some Ice Hockey. List any number of players, odd players are in team 1, even players team 2.")
     parser.add_argument('-r', '--record_video', help="Do you want to record a video?")
     parser.add_argument('-s', '--record_state', help="Do you want to pickle the state?")
-    parser.add_argument('-f', '--num_frames', default=5000, type=int, help="How many steps should we play for?")
+    parser.add_argument('-f', '--num_frames', default=10000, type=int, help="How many steps should we play for?")
     parser.add_argument('-p', '--num_players', default=2, type=int, help="Number of players per team")
     parser.add_argument('-m', '--max_score', default=10, type=int, help="How many goal should we play to?")
     parser.add_argument('-j', '--parallel', type=int, help="How many parallel process to use?")
@@ -477,7 +477,7 @@ if __name__ == '__main__':
         match = Match(use_graphics=True)
         #match = runner.Match(True)
         try:
-            result = match.run(team1, team2, args.num_players, args.num_frames, max_score=3,
+            result = match.run(team1, team2, args.num_players, args.num_frames, max_score=10,
                                initial_ball_location=args.ball_location, initial_ball_velocity=args.ball_velocity,
                                record_fn=recorder)
         except MatchException as e:

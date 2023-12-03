@@ -138,7 +138,7 @@ class Team:
                 x += lean_val
 
         if velocity_mag > 20:
-            action['acceleration'] = 0.2
+            action['acceleration'] = 0.5
 
         if x < 200:
             action['steer'] = -1
