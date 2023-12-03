@@ -12,7 +12,7 @@ import torch.nn as nn
 
 class Planner(nn.Module):
     def __init__(self, channels=[16, 32, 64, 32]):
-        super(YourModel, self).__init__()
+        super().__init__()
 
         # Define methods for creating convolutional and up-convolutional blocks
         def conv_block(in_channels, out_channels):
