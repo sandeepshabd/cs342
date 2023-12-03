@@ -1,8 +1,5 @@
-
 import torch
 import torch.nn.functional as F
-
-
 
 def spatial_argmax(logit):
     
@@ -15,30 +12,28 @@ class Planner(torch.nn.Module):
     def __init__(self, channels=[16, 32, 64, 32]):
         super().__init__()
 
-        conv_block = lambda c, h: [torch.nn.BatchNorm2d(h), torch.nn.Conv2d(h, c, 5, 2, 2), torch.nn.ReLU(True)]
-        upconv_block = lambda c, h: [torch.nn.BatchNorm2d(h), torch.nn.ConvTranspose2d(h, c, 4, 2, 1),
-                                     torch.nn.ReLU(True)]
+        def conv_block(in_channels,out_channels): 
+            return [torch.nn.BatchNorm2d(in_channels), torch.nn.Conv2d(in_channels, out_channels, 5, 2, 2), torch.nn.ReLU(True)]
         
-        in_channels = 3  
-        conv_layers = []  
-        upconv_layers = []  
 
-        # Create convolutional layers
-        for out_channels in channels:
-            conv_layers += conv_block(in_channels, out_channels)
-            in_channels = out_channels
+        def upconv_block(in_channels,out_channels):
+            return [torch.nn.BatchNorm2d(in_channels), torch.nn.ConvTranspose2d(in_channels, out_channels, 4, 2, 1),
+                                     torch.nn.ReLU(True)]
+
+        in_channels, conv_layers, upconv_layers = 3, [], []
+
+        for out_channel in channels:
+            conv_layers += conv_block(in_channels, out_channel)
+            in_channels = out_channel
+
+        for out_channel in channels[:-3:-1]:
+            upconv_layers += upconv_block(in_channels, out_channel)
+            in_channels = out_channel
 
 
-        reversed_channels = channels[:-3:-1]
-        for out_channels in reversed_channels:
-            upconv_layers += upconv_block(in_channels, out_channels)
-            in_channels = out_channels
+        _upconv += [torch.nn.BatchNorm2d(in_channels), torch.nn.Conv2d(in_channels, 1, 1, 1, 0)]
 
-
-
-        upconv_layers += [torch.nn.BatchNorm2d(in_channels), torch.nn.Conv2d(in_channels, 1, 1, 1, 0)]
-
-        self._conv = torch.nn.Sequential(*conv_layers)
+        self._conv = torch.nn.Sequential(*upconv_layers)
         self._upconv = torch.nn.Sequential(*upconv_layers)   
         self._mean = torch.FloatTensor([0.4519, 0.5590, 0.6204])
         self._std = torch.FloatTensor([0.0012, 0.0018, 0.0020])
@@ -55,7 +50,9 @@ class Planner(torch.nn.Module):
         output = output * torch.as_tensor([width - 1,    height - 1]).float().to(
             img.device)
 
-        return  output 
+        return  output #300/400 range
+
+        #return(x)
 
 def save_model(model):
     from torch import save
