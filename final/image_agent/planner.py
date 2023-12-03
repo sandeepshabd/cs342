@@ -25,8 +25,8 @@ class Planner(torch.nn.Module):
     def __init__(self, channels=[16, 32, 64, 32]):
         super().__init__()
 
-        self._mean = torch.FloatTensor([0.4519, 0.5590, 0.6204])
-        self._std = torch.FloatTensor([0.0012, 0.0018, 0.0020])
+        self._mean = torch.FloatTensor([0.5, 0.5, 0.5])
+        self._std = torch.FloatTensor([0.0015, 0.0015, 0.0015])
         
         input_channel = 3 
         conv_nw = []
