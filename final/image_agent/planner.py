@@ -1,8 +1,5 @@
-
 import torch
 import torch.nn.functional as F
-
-
 
 def spatial_argmax(logit):
     
@@ -47,9 +44,8 @@ class Planner(torch.nn.Module):
         output = output * torch.as_tensor([width - 1,    height - 1]).float().to(
             img.device)
 
-        return  output #300/400 range
+        return  output 
 
-        #return(x)
 
 def save_model(model):
     from torch import save
@@ -65,5 +61,4 @@ def load_model():
     r = Planner()
     r.load_state_dict(load(path.join(path.dirname(path.abspath(__file__)), 'planner.th'), map_location='cpu'))
     return r
-
 
