@@ -7,7 +7,20 @@ def spatial_argmax(logit):
     return torch.stack(((weights.sum(1) * torch.linspace(-1, 1, logit.size(2)).to(logit.device)[None]).sum(1),
                         (weights.sum(2) * torch.linspace(-1, 1, logit.size(1)).to(logit.device)[None]).sum(1)), 1)
     
-                        
+def conv_block(channel, input_channel):
+    return [
+        torch.nn.BatchNorm2d(input_channel),
+        torch.nn.Conv2d(input_channel, channel, kernel_size=5, stride=2, padding=2),
+        torch.nn.ReLU(inplace=True)
+    ]
+
+def upconv_block(channel, input_channel):
+    return [
+        torch.nn.BatchNorm2d(input_channel),
+        torch.nn.ConvTranspose2d(input_channel, channel, kernel_size=4, stride=2, padding=1),
+        torch.nn.ReLU(inplace=True)
+    ]
+                            
 class Planner(torch.nn.Module):
     def __init__(self, channels=[16, 32, 64, 32]):
         super().__init__()
@@ -15,10 +28,6 @@ class Planner(torch.nn.Module):
         self._mean = torch.FloatTensor([0.4519, 0.5590, 0.6204])
         self._std = torch.FloatTensor([0.0012, 0.0018, 0.0020])
         
-        conv_block = lambda channel, input_channel: [torch.nn.BatchNorm2d(input_channel), torch.nn.Conv2d(input_channel, channel, 5, 2, 2), torch.nn.ReLU(True)]
-        upconv_block = lambda channel, input_channel: [torch.nn.BatchNorm2d(input_channel), torch.nn.ConvTranspose2d(input_channel, channel, 4, 2, 1),
-                                     torch.nn.ReLU(True)]
-
         input_channel, conv_nw, conv_up = 3, [], []
         for channel_out in channels:
             conv_nw += conv_block(channel_out, input_channel)
