@@ -11,10 +11,22 @@ def spatial_argmax(logit):
 class Planner(torch.nn.Module):
     def __init__(self, channels=[16, 32, 64, 32]):
         super().__init__()
+        
+        def conv_block(in_channels, out_channels):
 
-        conv_block = lambda c, h: [torch.nn.BatchNorm2d(h), torch.nn.Conv2d(h, c, 5, 2, 2), torch.nn.ReLU(True)]
-        upconv_block = lambda c, h: [torch.nn.BatchNorm2d(h), torch.nn.ConvTranspose2d(h, c, 4, 2, 1),
-                                     torch.nn.ReLU(True)]
+            return torch.nn.Sequential(
+                torch.nn.BatchNorm2d(in_channels),
+                torch.nn.Conv2d(in_channels, out_channels, kernel_size=5, stride=2, padding=2),
+                torch.nn.ReLU(inplace=True))
+
+
+        def upconv_block(in_channels, out_channels):
+
+            return torch.nn.Sequential(
+                torch.nn.BatchNorm2d(in_channels),
+                torch.nn.ConvTranspose2d(in_channels, out_channels, kernel_size=4, stride=2, padding=1),
+                torch.nn.ReLU(inplace=True)
+            )
 
         h, _conv, _upconv = 3, [], []
         for c in channels:
