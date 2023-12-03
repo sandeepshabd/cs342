@@ -26,13 +26,13 @@ def train(args):
     if args.continue_training:
         model.load_state_dict(torch.load(path.join(path.dirname(path.abspath(__file__)), 'planner.th')))
 
-    loss = torch.nn.MSELoss(reduction='mean')
+    loss = torch.nn.L1Loss()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-5)
     transform = eval(basic_transform, {k: v for k, v in inspect.getmembers(dense_transforms) if inspect.isclass(v)})
     train_data = load_data(transform=transform, num_workers=4)
    
     global_step = 0
-    for epoch in range(300):
+    for epoch in range(1000):
 
         model.train()
         losses = []
@@ -48,7 +48,7 @@ def train(args):
             loss_val = loss(out, xy)
           
             train_logger.add_scalar('loss', loss_val, global_step)
-            if global_step % 10 == 0:
+            if global_step % 50 == 0:
                 log(train_logger, img, label, out, global_step)
 
             optimizer.zero_grad()
@@ -58,7 +58,7 @@ def train(args):
             
             losses.append(loss_val.detach().cpu().numpy())
         
-        avg_loss = np.mean(losses)
+        avg_loss = np.mean(losses)/len(losses)
         nowTime = datetime.now()
         date_time_str = nowTime.strftime("%Y-%m-%d %H:%M:%S")
         print("Current Time =", date_time_str,' ,epoch=',epoch,' ,Avergae Loss=',avg_loss.item())

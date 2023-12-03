@@ -15,7 +15,7 @@ class Team:
 
         self.planner = True     
     
-        self.MSEloss = torch.nn.MSELoss(reduction='mean')  
+        self.MSEloss = torch.nn.MSELoss()  
         self.total_loss_puck = 0           
         self.total_loss_No_puck = 0        
         self.total_loss_puck_count = 0     
