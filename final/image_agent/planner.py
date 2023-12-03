@@ -12,6 +12,9 @@ class Planner(torch.nn.Module):
     def __init__(self, channels=[16, 32, 64, 32]):
         super().__init__()
         
+        self._mean = torch.FloatTensor([0.4519, 0.5590, 0.6204])
+        self._std = torch.FloatTensor([0.0012, 0.0018, 0.0020])
+        
         def conv_block(in_channels, out_channels):
 
             return [
