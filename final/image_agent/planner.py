@@ -28,7 +28,10 @@ class Planner(torch.nn.Module):
         self._mean = torch.FloatTensor([0.4519, 0.5590, 0.6204])
         self._std = torch.FloatTensor([0.0012, 0.0018, 0.0020])
         
-        input_channel, conv_nw, conv_up = 3, [], []
+        input_channel = 3, 
+        conv_nw = []
+        conv_up =  []
+        
         for channel_out in channels:
             conv_nw += conv_block(channel_out, input_channel)
             input_channel = channel_out
