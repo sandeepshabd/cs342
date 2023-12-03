@@ -20,13 +20,13 @@ class Planner(torch.nn.Module):
                                      torch.nn.ReLU(True)]
 
         input_channel, _conv, _upconv = 3, [], []
-        for channel in channels:
-            _conv += conv_block(channel, input_channel)
-            input_channel = channel
+        for channel_out in channels:
+            _conv += conv_block(channel_out, input_channel)
+            input_channel = channel_out
 
-        for c in channels[:-3:-1]:
-            _upconv += upconv_block(c, input_channel)
-            input_channel = channel
+        for channel_out in channels[:-3:-1]:
+            _upconv += upconv_block(channel_out, input_channel)
+            input_channel = channel_out
 
         _upconv += [torch.nn.BatchNorm2d(input_channel), torch.nn.Conv2d(input_channel, 1, 1, 1, 0)]
 
