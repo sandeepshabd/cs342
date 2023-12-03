@@ -15,20 +15,20 @@ class Planner(torch.nn.Module):
         self._mean = torch.FloatTensor([0.4519, 0.5590, 0.6204])
         self._std = torch.FloatTensor([0.0012, 0.0018, 0.0020])
         
-        conv_block = lambda c, h: [torch.nn.BatchNorm2d(h), torch.nn.Conv2d(h, c, 5, 2, 2), torch.nn.ReLU(True)]
-        upconv_block = lambda c, h: [torch.nn.BatchNorm2d(h), torch.nn.ConvTranspose2d(h, c, 4, 2, 1),
+        conv_block = lambda channel, input_channel: [torch.nn.BatchNorm2d(input_channel), torch.nn.Conv2d(input_channel, channel, 5, 2, 2), torch.nn.ReLU(True)]
+        upconv_block = lambda channel, input_channel: [torch.nn.BatchNorm2d(input_channel), torch.nn.ConvTranspose2d(input_channel, channel, 4, 2, 1),
                                      torch.nn.ReLU(True)]
 
-        h, _conv, _upconv = 3, [], []
-        for c in channels:
-            _conv += conv_block(c, h)
-            h = c
+        input_channel, _conv, _upconv = 3, [], []
+        for channel in channels:
+            _conv += conv_block(channel, input_channel)
+            input_channel = channel
 
         for c in channels[:-3:-1]:
-            _upconv += upconv_block(c, h)
-            h = c
+            _upconv += upconv_block(c, input_channel)
+            input_channel = channel
 
-        _upconv += [torch.nn.BatchNorm2d(h), torch.nn.Conv2d(h, 1, 1, 1, 0)]
+        _upconv += [torch.nn.BatchNorm2d(input_channel), torch.nn.Conv2d(input_channel, 1, 1, 1, 0)]
 
         self._conv = torch.nn.Sequential(*_conv)
         self._upconv = torch.nn.Sequential(*_upconv)   
