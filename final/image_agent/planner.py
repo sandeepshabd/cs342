@@ -18,20 +18,29 @@ class Planner(torch.nn.Module):
         conv_block = lambda c, h: [torch.nn.BatchNorm2d(h), torch.nn.Conv2d(h, c, 5, 2, 2), torch.nn.ReLU(True)]
         upconv_block = lambda c, h: [torch.nn.BatchNorm2d(h), torch.nn.ConvTranspose2d(h, c, 4, 2, 1),
                                      torch.nn.ReLU(True)]
+        
+        in_channels = 3  
+        conv_layers = []  
+        upconv_layers = []  
 
-        h, _conv, _upconv = 3, [], []
-        for c in channels:
-            _conv += conv_block(c, h)
-            h = c
+        # Create convolutional layers
+        for out_channels in channels:
+            conv_layers.extend(conv_block(in_channels, out_channels))
+            in_channels = out_channels
 
-        for c in channels[:-3:-1]:
-            _upconv += upconv_block(c, h)
-            h = c
+        # Create up-convolutional layers
+        # Assuming channels[:-3:-1] is intended to reverse the channels list except the last element
+        reversed_channels = channels[-2::-1]
+        for out_channels in reversed_channels:
+            upconv_layers.extend(upconv_block(in_channels, out_channels))
+            in_channels = out_channels
 
-        _upconv += [torch.nn.BatchNorm2d(h), torch.nn.Conv2d(h, 1, 1, 1, 0)]
 
-        self._conv = torch.nn.Sequential(*_conv)
-        self._upconv = torch.nn.Sequential(*_upconv)   
+
+        upconv_layers += [torch.nn.BatchNorm2d(in_channels), torch.nn.Conv2d(in_channels, 1, 1, 1, 0)]
+
+        self._conv = torch.nn.Sequential(*conv_layers)
+        self._upconv = torch.nn.Sequential(*upconv_layers)   
         self._mean = torch.FloatTensor([0.4519, 0.5590, 0.6204])
         self._std = torch.FloatTensor([0.0012, 0.0018, 0.0020])
 
@@ -47,9 +56,7 @@ class Planner(torch.nn.Module):
         output = output * torch.as_tensor([width - 1,    height - 1]).float().to(
             img.device)
 
-        return  output #300/400 range
-
-        #return(x)
+        return  output 
 
 def save_model(model):
     from torch import save
