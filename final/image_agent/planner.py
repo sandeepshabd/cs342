@@ -11,37 +11,26 @@ def spatial_argmax(logit):
 class Planner(torch.nn.Module):
     def __init__(self, channels=[16, 32, 64, 32]):
         super().__init__()
-        
+
+        conv_block = lambda c, h: [torch.nn.BatchNorm2d(h), torch.nn.Conv2d(h, c, 5, 2, 2), torch.nn.ReLU(True)]
+        upconv_block = lambda c, h: [torch.nn.BatchNorm2d(h), torch.nn.ConvTranspose2d(h, c, 4, 2, 1),
+                                     torch.nn.ReLU(True)]
+
+        h, _conv, _upconv = 3, [], []
+        for c in channels:
+            _conv += conv_block(c, h)
+            h = c
+
+        for c in channels[:-3:-1]:
+            _upconv += upconv_block(c, h)
+            h = c
+
+        _upconv += [torch.nn.BatchNorm2d(h), torch.nn.Conv2d(h, 1, 1, 1, 0)]
+
+        self._conv = torch.nn.Sequential(*_conv)
+        self._upconv = torch.nn.Sequential(*_upconv)   
         self._mean = torch.FloatTensor([0.4519, 0.5590, 0.6204])
         self._std = torch.FloatTensor([0.0012, 0.0018, 0.0020])
-        
-
-        
-        def conv_block(in_channels,out_channel): 
-            return [torch.nn.BatchNorm2d(in_channels), torch.nn.Conv2d(in_channels, out_channel, 5, 2, 2), torch.nn.ReLU(True)]
-        
-
-        def upconv_block(in_channels,out_channel):
-            return [torch.nn.BatchNorm2d(in_channels), torch.nn.ConvTranspose2d(in_channels, out_channel, 4, 2, 1), torch.nn.ReLU(True)]
-
-        in_channels =3
-        conv_layers = []
-        upconv_layers = []
-        
-        for out_channel in channels:
-            conv_layers += conv_block(in_channels, out_channel)
-            in_channels = out_channel
-
-        for out_channel in channels[:-3:-1]:
-            upconv_layers += upconv_block(in_channels, out_channel)
-            in_channels = out_channel
-
-
-        upconv_layers += [torch.nn.BatchNorm2d(in_channels), torch.nn.Conv2d(in_channels, 1, 1, 1, 0)]
-        self._conv = torch.nn.Sequential(*upconv_layers)
-        self._upconv = torch.nn.Sequential(*upconv_layers)   
-        
-
 
     def forward(self, img):
         
