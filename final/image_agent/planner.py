@@ -14,34 +14,25 @@ class Planner(nn.Module):
     def __init__(self, channels=[16, 32, 64, 32]):
         super(Planner, self).__init__()
 
-        self._conv = nn.Sequential(*self._make_layers(channels, conv=True))
-        self._upconv = nn.Sequential(*self._make_layers(channels, conv=False))
+        conv_block = lambda c, h: [torch.nn.BatchNorm2d(h), torch.nn.Conv2d(h, c, 5, 2, 2), torch.nn.ReLU(True)]
+        upconv_block = lambda c, h: [torch.nn.BatchNorm2d(h), torch.nn.ConvTranspose2d(h, c, 4, 2, 1),
+                                     torch.nn.ReLU(True)]
 
-        # Normalization parameters
+        h, _conv, _upconv = 3, [], []
+        for c in channels:
+            _conv += conv_block(c, h)
+            h = c
+
+        for c in channels[:-3:-1]:
+            _upconv += upconv_block(c, h)
+            h = c
+
+        _upconv += [torch.nn.BatchNorm2d(h), torch.nn.Conv2d(h, 1, 1, 1, 0)]
+
+        self._conv = torch.nn.Sequential(*_conv)
+        self._upconv = torch.nn.Sequential(*_upconv)   
         self._mean = torch.FloatTensor([0.4519, 0.5590, 0.6204])
         self._std = torch.FloatTensor([0.0012, 0.0018, 0.0020])
-
-    def _make_layers(self, channels, conv=True):
-        layers = []
-        in_channels = 3
-
-        for i, out_channels in enumerate(channels):
-            if conv or i > 0:  # Skip first for upconvolution
-                layers.append(nn.BatchNorm2d(in_channels))
-
-            if conv:
-                layers.append(nn.Conv2d(in_channels, out_channels, 5, 2, 2))
-            else:
-                layers.append(nn.ConvTranspose2d(in_channels, out_channels, 4, 2, 1))
-
-            layers.append(nn.ReLU(inplace=True))
-            in_channels = out_channels
-
-        if not conv:
-            # Additional layer for the upconvolution path
-            layers.append(nn.Conv2d(in_channels, 1, 1))
-
-        return layers
                         
     def forward(self, img):
         normalized_img = (img - self._mean.to(img.device)) / self._std.to(img.device)
