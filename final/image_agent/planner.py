@@ -12,25 +12,47 @@ import torch.nn as nn
 
 class Planner(nn.Module):
     def __init__(self, channels=[16, 32, 64, 32]):
-        super(Planner, self).__init__()
+        super(YourModel, self).__init__()
 
-        conv_block = lambda c, h: [torch.nn.BatchNorm2d(h), torch.nn.Conv2d(h, c, 5, 2, 2), torch.nn.ReLU(True)]
-        upconv_block = lambda c, h: [torch.nn.BatchNorm2d(h), torch.nn.ConvTranspose2d(h, c, 4, 2, 1),
-                                     torch.nn.ReLU(True)]
+        # Define methods for creating convolutional and up-convolutional blocks
+        def conv_block(in_channels, out_channels):
+            return nn.Sequential(
+                nn.BatchNorm2d(in_channels),
+                nn.Conv2d(in_channels, out_channels, kernel_size=5, stride=2, padding=2),
+                nn.ReLU(inplace=True)
+            )
 
-        h, _conv, _upconv = 3, [], []
-        for c in channels:
-            _conv += conv_block(c, h)
-            h = c
+        def upconv_block(in_channels, out_channels):
+            return nn.Sequential(
+                nn.BatchNorm2d(in_channels),
+                nn.ConvTranspose2d(in_channels, out_channels, kernel_size=4, stride=2, padding=1),
+                nn.ReLU(inplace=True)
+            )
 
-        for c in channels[:-3:-1]:
-            _upconv += upconv_block(c, h)
-            h = c
+        # Initialize variables
+        in_channels = 3
+        _conv = []
+        _upconv = []
 
-        _upconv += [torch.nn.BatchNorm2d(h), torch.nn.Conv2d(h, 1, 1, 1, 0)]
+        # Create convolutional layers
+        for out_channels in channels:
+            _conv.append(conv_block(in_channels, out_channels))
+            in_channels = out_channels
 
-        self._conv = torch.nn.Sequential(*_conv)
-        self._upconv = torch.nn.Sequential(*_upconv)   
+        # Create up-convolutional layers
+        for out_channels in channels[:-3:-1]:
+            _upconv.append(upconv_block(in_channels, out_channels))
+            in_channels = out_channels
+
+        # Add final layer to upconvolution
+        _upconv.append(nn.Sequential(
+            nn.BatchNorm2d(in_channels),
+            nn.Conv2d(in_channels, 1, kernel_size=1)
+        ))
+
+        # Combine layers into sequential models
+        self._conv = nn.Sequential(*_conv)
+        self._upconv = nn.Sequential(*_upconv)
         self._mean = torch.FloatTensor([0.4519, 0.5590, 0.6204])
         self._std = torch.FloatTensor([0.0012, 0.0018, 0.0020])
                         
