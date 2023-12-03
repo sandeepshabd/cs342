@@ -24,9 +24,6 @@ DATASET_PATH = 'drive_data'
 ON_COLAB = os.environ.get('ON_COLAB', False)
 COLAB_IMAGES = list()
 
-print(ON_COLAB)
-
-
 
 RunnerInfo = namedtuple('RunnerInfo', ['agent_type', 'error', 'total_act_time'])
 
@@ -166,16 +163,16 @@ class Match:
         file_no += 1
  
         fn = path.join('/content/cs342/final/data400/'+ '%d' % playerNumber +'/ice_hockey' + '_%05d' % id)
-        print('file formed')
+
         Image.fromarray(im).save(fn + '.png')
-        print('image saved')
+
             
             # Save additional data based on instance_data flag
         try:
             with open(fn + '.csv', 'w') as f:
-                print(tuple(pt))
+        
                 f.write('%0.1f,%0.1f' % tuple(pt))
-                print('saved. to excel')
+    
         except Exception as e:
             print('exception while saving to excel')
         
@@ -238,10 +235,7 @@ class Match:
         _, error, t2 = self._g(self._r(team2.info)())
         if error:
             raise MatchException([3, 0], 'crash during {}: {}'.format(where, error), 'other team crashed')
-        
-       
-        print(t1)
-        print(t2)
+
         
         if(t1 is not None  and t2 is not None):
             logging.debug('timeout {} <? {} {}'.format(timeout_slack + n_iter * timeout_step, t1, t2))
@@ -271,8 +265,7 @@ class Match:
 
         t1_type, *_ = self._g(self._r(team1.info()))
         t2_type, *_ = self._g(self._r(team2.info()))
-        print(team1.info())
-        print(team2.info())
+
 
         if t1_type == 'image' or t2_type == 'image':
             assert self._use_graphics, 'Need to use_graphics for image agents.'
