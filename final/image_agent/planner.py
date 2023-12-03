@@ -12,18 +12,22 @@ class Planner(torch.nn.Module):
     def __init__(self, channels=[16, 32, 64, 32]):
         super().__init__()
         
+        self._mean = torch.FloatTensor([0.4519, 0.5590, 0.6204])
+        self._std = torch.FloatTensor([0.0012, 0.0018, 0.0020])
+        
+
+        
+        def conv_block(in_channels,out_channel): 
+            return [torch.nn.BatchNorm2d(in_channels), torch.nn.Conv2d(in_channels, out_channel, 5, 2, 2), torch.nn.ReLU(True)]
+        
+
+        def upconv_block(in_channels,out_channel):
+            return [torch.nn.BatchNorm2d(in_channels), torch.nn.ConvTranspose2d(in_channels, out_channel, 4, 2, 1), torch.nn.ReLU(True)]
+
         in_channels =3
         conv_layers = []
         upconv_layers = []
         
-        def conv_block(in_channels,out_channels): 
-            return [torch.nn.BatchNorm2d(in_channels), torch.nn.Conv2d(in_channels, out_channels, 5, 2, 2), torch.nn.ReLU(True)]
-        
-
-        def upconv_block(in_channels,out_channels):
-            return [torch.nn.BatchNorm2d(in_channels), torch.nn.ConvTranspose2d(in_channels, out_channels, 4, 2, 1),
-                                     torch.nn.ReLU(True)]
-
         for out_channel in channels:
             conv_layers += conv_block(in_channels, out_channel)
             in_channels = out_channel
@@ -37,8 +41,7 @@ class Planner(torch.nn.Module):
         self._conv = torch.nn.Sequential(*upconv_layers)
         self._upconv = torch.nn.Sequential(*upconv_layers)   
         
-        self._mean = torch.FloatTensor([0.4519, 0.5590, 0.6204])
-        self._std = torch.FloatTensor([0.0012, 0.0018, 0.0020])
+
 
     def forward(self, img):
         
