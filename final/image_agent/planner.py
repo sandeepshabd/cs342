@@ -32,21 +32,26 @@ class Planner(torch.nn.Module):
 
         self._conv = torch.nn.Sequential(*conv_nw)
         self._upconv = torch.nn.Sequential(*conv_up)   
- 
+     
+
 
     def forward(self, img):
-        
-        img = (img - self._mean[None, :, None, None].to(img.device)) / self._std[None, :, None, None].to(img.device)
-        h = self._conv(img)
-        x = self._upconv(h)
+        # Normalize the image
+        normalized_img = (img - self._mean.to(img.device)) / self._std.to(img.device)
 
-        output = (1 + spatial_argmax(x.squeeze(1))) 
-        width = img.size(3)
-        height = img.size(2)
-        output = output * torch.as_tensor([width - 1,    height - 1]).float().to(
-            img.device)
+        # Process the image through the convolutional and up-convolutional layers
+        conv_output = self._conv(normalized_img)
+        upconv_output = self._upconv(conv_output)
 
-        return  output 
+        # Apply spatial argmax
+        spatial_max = spatial_argmax(upconv_output.squeeze(1))
+
+        # Rescale the spatial max to the original image size
+        scale = torch.tensor([img.size(3) - 1, img.size(2) - 1], dtype=torch.float32, device=img.device)
+        output = (1 + spatial_max) * scale
+
+        return output
+
 
 
 def save_model(model):
