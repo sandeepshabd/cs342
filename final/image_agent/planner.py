@@ -18,8 +18,8 @@ class Planner(nn.Module):
         self._upconv = nn.Sequential(*self._make_layers(channels, conv=False))
 
         # Normalization parameters
-        self._mean = torch.FloatTensor([0.4519, 0.5590, 0.6204]).view(1, 3, 1, 1)
-        self._std = torch.FloatTensor([0.0012, 0.0018, 0.0020]).view(1, 3, 1, 1)
+        self._mean = torch.FloatTensor([0.4519, 0.5590, 0.6204])
+        self._std = torch.FloatTensor([0.0012, 0.0018, 0.0020])
 
     def _make_layers(self, channels, conv=True):
         layers = []
