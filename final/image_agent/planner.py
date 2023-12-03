@@ -34,21 +34,6 @@ class Planner(torch.nn.Module):
         self._upconv = torch.nn.Sequential(*conv_up)   
  
 
-    def forward(self, img):
-        
-        img = (img - self._mean[None, :, None, None].to(img.device)) / self._std[None, :, None, None].to(img.device)
-        h = self._conv(img)
-        x = self._upconv(h)
-
-        output = (1 + spatial_argmax(x.squeeze(1))) 
-        width = img.size(3)
-        height = img.size(2)
-        output = output * torch.as_tensor([width - 1,    height - 1]).float().to(
-            img.device)
-
-        return  output 
-    
-
 
     def forward(self, img):
         # Normalize the image
