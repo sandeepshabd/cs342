@@ -49,9 +49,9 @@ def train(args):
             xy = torch.cat((x.clamp(min=0.0,max=w),y.clamp(min=0.0,max=h)),dim=1) 
 
             xy = xy.to(device)
-            print(loss_val)
+            
             loss_val = loss(out, xy)
-          
+            print(loss_val)
             #train_logger.add_scalar('loss', loss_val, global_step)
             #if global_step % 10 == 0:
               #  log(train_logger, img, label, out, global_step)
