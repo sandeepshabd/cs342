@@ -71,10 +71,14 @@ class Team:
         if slope == 0:
             x_intersect = kart_loc[1]
         else:
-            if facing_up_grid:
-                x_intersect = (65-intersect)/slope
-            else:
-                x_intersect = (-65-intersect)/slope
+            try:
+                if facing_up_grid:
+                    x_intersect = (65-intersect)/slope
+                else:
+                    x_intersect = (-65-intersect)/slope
+            except Exception as e:
+                  x_intersect = kart_loc[1]
+                  
         return (x_intersect, facing_up_grid)
 
 
