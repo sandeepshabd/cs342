@@ -28,7 +28,7 @@ def train(args):
         model.load_state_dict(torch.load(path.join(path.dirname(path.abspath(__file__)), 'planner.th')))
 
     #loss = torch.nn.CrossEntropyLoss()
-    loss = torch.nn.MSELoss(reduction='none') 
+    loss = torch.nn.MSELoss(reduction='mean') 
 
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-5)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.25)
