@@ -156,6 +156,13 @@ class Match:
                             (H / 2) * (-p[1] / p[-1] + 1)])
 
         return aimpoint
+    
+    def puck_in_frame(instance):
+        i = instance >> 24
+        count = 0
+        if(8 in i):
+            count = np.count_nonzero(i == 8)
+        return 8 in i, count
 
     def collect(_,is400, playerNumber,im, puck_flag, pt, instance=None):
         global file_no 
@@ -371,7 +378,7 @@ class Match:
             
             if heatmap_team1:
                 # Right shift the entire array at once
-                heatmap_team1[0] >>= 24
+                heatmap_team1[0] >> 24
                 puck_flag1 = 0
                 for i in range (300):
                     for j in range (400):
@@ -433,9 +440,9 @@ if __name__ == '__main__':
     parser = ArgumentParser(description="Play some Ice Hockey. List any number of players, odd players are in team 1, even players team 2.")
     parser.add_argument('-r', '--record_video', help="Do you want to record a video?")
     parser.add_argument('-s', '--record_state', help="Do you want to pickle the state?")
-    parser.add_argument('-f', '--num_frames', default=2000, type=int, help="How many steps should we play for?")
+    parser.add_argument('-f', '--num_frames', default=1500, type=int, help="How many steps should we play for?")
     parser.add_argument('-p', '--num_players', default=2, type=int, help="Number of players per team")
-    parser.add_argument('-m', '--max_score', default=5, type=int, help="How many goal should we play to?")
+    parser.add_argument('-m', '--max_score', default=10, type=int, help="How many goal should we play to?")
     parser.add_argument('-j', '--parallel', type=int, help="How many parallel process to use?")
     parser.add_argument('--ball_location', default=[0, 0], type=float, nargs=2, help="Initial xy location of ball")
     parser.add_argument('--ball_velocity', default=[0, 0], type=float, nargs=2, help="Initial xy velocity of ball")
