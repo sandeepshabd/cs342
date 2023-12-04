@@ -28,15 +28,16 @@ def train(args):
         model.load_state_dict(torch.load(path.join(path.dirname(path.abspath(__file__)), 'planner.th')))
 
     #loss = torch.nn.CrossEntropyLoss()
-    loss = torch.nn.MSELoss(reduction='mean') 
+    loss = torch.nn.L1Loss()
+    #loss = torch.nn.MSELoss(reduction='mean') 
 
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-5)
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.25)
+    #scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.25)
     transform = eval(basic_transform, {k: v for k, v in inspect.getmembers(dense_transforms) if inspect.isclass(v)})
     train_data = load_data(transform=transform, num_workers=4)
     isStart = True
     global_step = 0
-    for epoch in range(800):
+    for epoch in range(300):
 
         model.train()
         losses = []
@@ -74,12 +75,12 @@ def train(args):
             lowest_loss_val = avg_loss
             isStart = False
             
-        if avg_loss <= lowest_loss_val:
+        if (avg_loss - lowest_loss_val) < 1.5:
             save_model(model)
             print("Model save: Current Time =", date_time_str,' ,epoch=',epoch,' ,Avergae Loss=',avg_loss)
             lowest_loss_val = avg_loss
         
-        scheduler.step()
+        #scheduler.step()
 
 
 def log(logger, img, label, pred, global_step):
@@ -101,7 +102,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--log_dir')
     # Put custom arguments here
-    parser.add_argument('-n', '--num_epoch', type=int, default=1000)
+    parser.add_argument('-n', '--num_epoch', type=int, default=300)
     parser.add_argument('-w', '--num_workers', type=int, default=4)
     parser.add_argument('-lr', '--learning_rate', type=float, default=1e-3)
     parser.add_argument('-c', '--continue_training', action='store_true')
