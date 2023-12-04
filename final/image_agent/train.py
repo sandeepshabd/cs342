@@ -27,7 +27,8 @@ def train(args):
     if args.continue_training:
         model.load_state_dict(torch.load(path.join(path.dirname(path.abspath(__file__)), 'planner.th')))
 
-    loss = torch.nn.CrossEntropyLoss()
+    loss = torch.nn.HuberLoss()
+    #loss = torch.nn.CrossEntropyLoss()
     #loss = torch.nn.L1Loss()
     #loss = torch.nn.MSELoss(reduction='mean') 
 
