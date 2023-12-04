@@ -51,9 +51,9 @@ def train(args):
             xy = xy.to(device)
             loss_val = loss(out, xy)
           
-            train_logger.add_scalar('loss', loss_val, global_step)
-            if global_step % 10 == 0:
-                log(train_logger, img, label, out, global_step)
+            #train_logger.add_scalar('loss', loss_val, global_step)
+            #if global_step % 10 == 0:
+              #  log(train_logger, img, label, out, global_step)
 
             optimizer.zero_grad()
             loss_val.backward()
