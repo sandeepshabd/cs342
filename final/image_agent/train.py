@@ -49,6 +49,7 @@ def train(args):
             xy = torch.cat((x.clamp(min=0.0,max=w),y.clamp(min=0.0,max=h)),dim=1) 
 
             xy = xy.to(device)
+            print(loss_val)
             loss_val = loss(out, xy)
           
             #train_logger.add_scalar('loss', loss_val, global_step)
@@ -56,11 +57,13 @@ def train(args):
               #  log(train_logger, img, label, out, global_step)
 
             optimizer.zero_grad()
-            loss_val.backward()
+            if(loss_val is not None and loss_val != 0):
+                loss_val.backward()
             optimizer.step()
             global_step += 1
             
-            losses.append(loss_val.detach().cpu().numpy())
+            if(loss_val is not None and loss_val != 0):
+                losses.append(loss_val.detach().cpu().numpy())
         
         avg_loss = np.mean(losses)
         nowTime = datetime.now()
