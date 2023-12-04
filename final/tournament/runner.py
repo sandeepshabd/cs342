@@ -15,7 +15,7 @@ from os import path
 TRACK_NAME = 'icy_soccer_field'
 MAX_FRAMES = 1000
 TRACK_OFFSET = 15
-file_no = 1990
+file_no = 2000
 
 TIMEOUT_SLACK = 2   # seconds
 TIMEOUT_STEP = 0.1  # seconds
@@ -23,9 +23,6 @@ TIMEOUT_STEP = 0.1  # seconds
 DATASET_PATH = 'drive_data'
 ON_COLAB = os.environ.get('ON_COLAB', False)
 COLAB_IMAGES = list()
-
-print(ON_COLAB)
-
 
 
 RunnerInfo = namedtuple('RunnerInfo', ['agent_type', 'error', 'total_act_time'])
@@ -159,26 +156,30 @@ class Match:
                             (H / 2) * (-p[1] / p[-1] + 1)])
 
         return aimpoint
+    
+    def puck_in_frame(instance):
+        i = instance >> 24
+        count = 0
+        if(8 in i):
+            count = np.count_nonzero(i == 8)
+        return 8 in i, count
 
     def collect(_,is400, playerNumber,im, puck_flag, pt, instance=None):
         global file_no 
         id = file_no 
         file_no += 1
-        
-        if(is400):
-            fn = path.join('/content/cs342/final/data400/'+ '%d' % playerNumber +'/ice_hockey' + '_%05d' % id)
-        else:
-            fn = path.join('/content/cs342/final/data/'+  '%d' % playerNumber +'/ice_hockey' + '_%05d' % id)
-        print('file formed')
+ 
+        fn = path.join('/content/cs342/final/data400/'+ '%d' % playerNumber +'/ice_hockey' + '_%05d' % id)
+
         Image.fromarray(im).save(fn + '.png')
-        print('image saved')
+
             
             # Save additional data based on instance_data flag
         try:
             with open(fn + '.csv', 'w') as f:
-                print(tuple(pt))
+        
                 f.write('%0.1f,%0.1f' % tuple(pt))
-                print('saved. to excel')
+    
         except Exception as e:
             print('exception while saving to excel')
         
@@ -241,10 +242,7 @@ class Match:
         _, error, t2 = self._g(self._r(team2.info)())
         if error:
             raise MatchException([3, 0], 'crash during {}: {}'.format(where, error), 'other team crashed')
-        
-       
-        print(t1)
-        print(t2)
+
         
         if(t1 is not None  and t2 is not None):
             logging.debug('timeout {} <? {} {}'.format(timeout_slack + n_iter * timeout_step, t1, t2))
@@ -256,7 +254,7 @@ class Match:
                     # Team 1 wins because of a timeout
                     return [3, 0], 'other team timed out', 'Timeout ({:.4f}/iter > {:.4f}/iter)'.format(t2 / n_iter, timeout_step)
 
-    def run(self, team1, team2, num_player=1, max_frames=MAX_FRAMES, max_score=3, record_fn=None,
+    def run(self, team1, team2, num_player=1, max_frames=MAX_FRAMES, max_score=10, record_fn=None,
             timeout_slack=TIMEOUT_SLACK, timeout_step=TIMEOUT_STEP, initial_ball_location=[0, 0],
             initial_ball_velocity=[0, 0]):
 
@@ -274,8 +272,7 @@ class Match:
 
         t1_type, *_ = self._g(self._r(team1.info()))
         t2_type, *_ = self._g(self._r(team2.info()))
-        print(team1.info())
-        print(team2.info())
+
 
         if t1_type == 'image' or t2_type == 'image':
             assert self._use_graphics, 'Need to use_graphics for image agents.'
@@ -300,7 +297,7 @@ class Match:
 
         state = self._pystk.WorldState()
         state.update()
-        print(initial_ball_location)
+   
         state.set_ball_location((initial_ball_location[0], 1, initial_ball_location[1]),
                                 (initial_ball_velocity[0], 0, initial_ball_velocity[1]))
         
@@ -349,9 +346,6 @@ class Match:
                 actions.append(a1)
                 actions.append(a2)
                 
-            print('players')
-            print(state.players)
-            
 
             x=soccer_state['ball']['location'][0]
             y = soccer_state['ball']['location'][1] 
@@ -384,7 +378,7 @@ class Match:
             
             if heatmap_team1:
                 # Right shift the entire array at once
-                heatmap_team1[0] >>= 24
+                heatmap_team1[0] >> 24
                 puck_flag1 = 0
                 for i in range (300):
                     for j in range (400):
@@ -400,13 +394,13 @@ class Match:
                         if heatmap_team1[0][i][j]  == 8:
                             puck_flag2 = 1
 
-            print(f'puck flag:{puck_flag1}')
+
             if record_fn:
                 self._r(record_fn)(team1_state, team2_state, soccer_state=soccer_state, actions=actions,
                                    team1_images=team1_images, team2_images=team2_images)
                 self.collect(True,0,team1_images[0], puck_flag1, aim_point_300_400, heatmap_team1[0])
                 self.collect(True,1,team1_images[1], puck_flag2, aim_point_300_400_2, heatmap_team2[0])
- 
+                """
                 if verbose and ON_COLAB:
                     from PIL import Image, ImageDraw
                     image = Image.fromarray(self.k.render_data[0].image)
@@ -418,7 +412,7 @@ class Match:
                     draw.ellipse((p[0] - 2, p[1] - 2, p[0]+2, p[1]+2), fill=(255, 0, 0))
 
                     COLAB_IMAGES.append(np.array(team1_images[0]))
-
+                """
             logging.debug('  race.step  [score = {}]'.format(state.soccer.score))
             if (not race.step([self._pystk.Action(**a) for a in actions]) and num_player) or sum(state.soccer.score) >= max_score:
                 break
@@ -446,9 +440,9 @@ if __name__ == '__main__':
     parser = ArgumentParser(description="Play some Ice Hockey. List any number of players, odd players are in team 1, even players team 2.")
     parser.add_argument('-r', '--record_video', help="Do you want to record a video?")
     parser.add_argument('-s', '--record_state', help="Do you want to pickle the state?")
-    parser.add_argument('-f', '--num_frames', default=1200, type=int, help="How many steps should we play for?")
+    parser.add_argument('-f', '--num_frames', default=1500, type=int, help="How many steps should we play for?")
     parser.add_argument('-p', '--num_players', default=2, type=int, help="Number of players per team")
-    parser.add_argument('-m', '--max_score', default=3, type=int, help="How many goal should we play to?")
+    parser.add_argument('-m', '--max_score', default=10, type=int, help="How many goal should we play to?")
     parser.add_argument('-j', '--parallel', type=int, help="How many parallel process to use?")
     parser.add_argument('--ball_location', default=[0, 0], type=float, nargs=2, help="Initial xy location of ball")
     parser.add_argument('--ball_velocity', default=[0, 0], type=float, nargs=2, help="Initial xy velocity of ball")
@@ -464,9 +458,7 @@ if __name__ == '__main__':
         # Create the teams
         team1 = AIRunner() if args.team1 == 'AI' else TeamRunner(args.team1)
         team2 = AIRunner() if args.team2 == 'AI' else TeamRunner(args.team2)
-        
-        print(team1)
-        print(team2)
+
 
         # What should we record?
         recorder = None
@@ -480,7 +472,7 @@ if __name__ == '__main__':
         match = Match(use_graphics=True)
         #match = runner.Match(True)
         try:
-            result = match.run(team1, team2, args.num_players, args.num_frames, max_score=3,
+            result = match.run(team1, team2, args.num_players, args.num_frames, max_score=10,
                                initial_ball_location=args.ball_location, initial_ball_velocity=args.ball_velocity,
                                record_fn=recorder)
         except MatchException as e:
@@ -501,8 +493,7 @@ if __name__ == '__main__':
         team1_type, *_ = team1.info() if args.team1 == 'AI' else remote.get(team1.info.remote())
         team2_type, *_ = team2.info() if args.team2 == 'AI' else remote.get(team2.info.remote())
 
-        print(team1.info())
-        print(team2.info())
+
         
         # What should we record?
         assert args.record_state is None or args.record_video is None, "Cannot record both video and state in parallel mode"

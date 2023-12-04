@@ -19,6 +19,7 @@ def train(args):
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     model = Planner().to(torch.device('cuda' if torch.cuda.is_available() else 'cpu')).to(device)
     basic_transform = 'Compose([ColorJitter(0.9, 0.9, 0.9, 0.1), RandomHorizontalFlip(), ToTensor()])'
+    
     train_logger, valid_logger = None, None
     if args.log_dir is not None:
         train_logger = tb.SummaryWriter(path.join(args.log_dir, 'train'))
@@ -26,13 +27,16 @@ def train(args):
     if args.continue_training:
         model.load_state_dict(torch.load(path.join(path.dirname(path.abspath(__file__)), 'planner.th')))
 
-    loss = torch.nn.MSELoss(reduction='mean')
+    #loss = torch.nn.CrossEntropyLoss()
+    loss = torch.nn.MSELoss(reduction='none') 
+
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-5)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.25)
     transform = eval(basic_transform, {k: v for k, v in inspect.getmembers(dense_transforms) if inspect.isclass(v)})
     train_data = load_data(transform=transform, num_workers=4)
-   
+    isStart = True
     global_step = 0
-    for epoch in range(300):
+    for epoch in range(800):
 
         model.train()
         losses = []
@@ -45,26 +49,39 @@ def train(args):
             xy = torch.cat((x.clamp(min=0.0,max=w),y.clamp(min=0.0,max=h)),dim=1) 
 
             xy = xy.to(device)
+            
             loss_val = loss(out, xy)
-          
-            train_logger.add_scalar('loss', loss_val, global_step)
-            if global_step % 10 == 0:
-                log(train_logger, img, label, out, global_step)
+            #print(loss_val)
+            #train_logger.add_scalar('loss', loss_val, global_step)
+            #if global_step % 10 == 0:
+              #  log(train_logger, img, label, out, global_step)
 
             optimizer.zero_grad()
-            loss_val.backward()
+            if(loss_val is not None ):
+                loss_val.backward()
             optimizer.step()
             global_step += 1
             
-            losses.append(loss_val.detach().cpu().numpy())
+            if(loss_val is not None ):
+                losses.append(loss_val.detach().cpu().numpy())
         
         avg_loss = np.mean(losses)
         nowTime = datetime.now()
         date_time_str = nowTime.strftime("%Y-%m-%d %H:%M:%S")
-        print("Current Time =", date_time_str,' ,epoch=',epoch,' ,Avergae Loss=',avg_loss.item())
-        save_model(model)
+        print("Current Time =", date_time_str,' ,epoch=',epoch,' ,Avergae Loss=',avg_loss)
+        
+        
+        if isStart:
+            lowest_loss_val = avg_loss
+            isStart = False
+            
+        if avg_loss < lowest_loss_val:
+            save_model(model)
+            print("Model save: Current Time =", date_time_str,' ,epoch=',epoch,' ,Avergae Loss=',avg_loss)
+            lowest_loss_val = avg_loss
+        
+        scheduler.step()
 
-    save_model(model)
 
 def log(logger, img, label, pred, global_step):
     import matplotlib.pyplot as plt
@@ -85,7 +102,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--log_dir')
     # Put custom arguments here
-    parser.add_argument('-n', '--num_epoch', type=int, default=50)
+    parser.add_argument('-n', '--num_epoch', type=int, default=1000)
     parser.add_argument('-w', '--num_workers', type=int, default=4)
     parser.add_argument('-lr', '--learning_rate', type=float, default=1e-3)
     parser.add_argument('-c', '--continue_training', action='store_true')

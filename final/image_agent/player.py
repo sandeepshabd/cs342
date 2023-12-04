@@ -15,7 +15,7 @@ class Team:
 
         self.planner = True     
     
-        self.MSEloss = torch.nn.MSELoss(reduction='mean')  
+        self.MSEloss = torch.nn.MSELoss()  
         self.total_loss_puck = 0           
         self.total_loss_No_puck = 0        
         self.total_loss_puck_count = 0     
@@ -65,16 +65,21 @@ class Team:
         return aimpoint
 
     def x_intersect(self, kart_loc, kart_front):
-        slope = (kart_loc[1] - kart_front[1])/(kart_loc[0] - kart_front[0])
-        intersect = kart_loc[1] - (slope*kart_loc[0])
-        facing_up_grid = kart_front[1] > kart_loc[1]
-        if slope == 0:
-            x_intersect = kart_loc[1]
-        else:
-            if facing_up_grid:
-                x_intersect = (65-intersect)/slope
+        try:
+            slope = (kart_loc[1] - kart_front[1])/(kart_loc[0] - kart_front[0])
+            intersect = kart_loc[1] - (slope*kart_loc[0])
+            facing_up_grid = kart_front[1] > kart_loc[1]
+            if slope == 0:
+                x_intersect = kart_loc[1]
             else:
-                x_intersect = (-65-intersect)/slope
+           
+                if facing_up_grid:
+                    x_intersect = (65-intersect)/slope
+                else:
+                    x_intersect = (-65-intersect)/slope
+        except Exception as e:
+            x_intersect = kart_loc[1]
+                  
         return (x_intersect, facing_up_grid)
 
 
@@ -138,7 +143,7 @@ class Team:
                 x += lean_val
 
         if velocity_mag > 20:
-            action['acceleration'] = 0.2
+            action['acceleration'] = 0.5
 
         if x < 200:
             action['steer'] = -1
