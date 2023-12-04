@@ -27,6 +27,7 @@ def train(args):
     if args.continue_training:
         model.load_state_dict(torch.load(path.join(path.dirname(path.abspath(__file__)), 'planner.th')))
 
+    #loss = torch.nn.CrossEntropyLoss()
     loss = torch.nn.MSELoss(reduction='none') 
 
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-5)
