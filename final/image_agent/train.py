@@ -52,13 +52,12 @@ def train(args):
             
             loss_val = loss(out, xy)
             #print(loss_val)
-            #train_logger.add_scalar('loss', loss_val, global_step)
-            #if global_step % 10 == 0:
-              #  log(train_logger, img, label, out, global_step)
+            train_logger.add_scalar('loss', loss_val, global_step)
+            if global_step % 10 == 0:
+                log(train_logger, img, label, out, global_step)
 
             optimizer.zero_grad()
-            if(loss_val is not None ):
-                loss_val.backward()
+            loss_val.backward()
             optimizer.step()
             global_step += 1
             
@@ -75,7 +74,7 @@ def train(args):
             lowest_loss_val = avg_loss
             isStart = False
             
-        if avg_loss < lowest_loss_val:
+        if avg_loss <= lowest_loss_val:
             save_model(model)
             print("Model save: Current Time =", date_time_str,' ,epoch=',epoch,' ,Avergae Loss=',avg_loss)
             lowest_loss_val = avg_loss
