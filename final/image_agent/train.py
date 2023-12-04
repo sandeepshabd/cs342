@@ -51,18 +51,18 @@ def train(args):
             xy = xy.to(device)
             
             loss_val = loss(out, xy)
-            print(loss_val)
+            #print(loss_val)
             #train_logger.add_scalar('loss', loss_val, global_step)
             #if global_step % 10 == 0:
               #  log(train_logger, img, label, out, global_step)
 
             optimizer.zero_grad()
-            if(loss_val is not None and loss_val != 0):
+            if(loss_val is not None ):
                 loss_val.backward()
             optimizer.step()
             global_step += 1
             
-            if(loss_val is not None and loss_val != 0):
+            if(loss_val is not None ):
                 losses.append(loss_val.detach().cpu().numpy())
         
         avg_loss = np.mean(losses)
