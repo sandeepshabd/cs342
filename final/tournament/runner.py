@@ -290,7 +290,7 @@ class Match:
 
         state = self._pystk.WorldState()
         state.update()
-        print(initial_ball_location)
+   
         state.set_ball_location((initial_ball_location[0], 1, initial_ball_location[1]),
                                 (initial_ball_velocity[0], 0, initial_ball_velocity[1]))
         
@@ -339,9 +339,6 @@ class Match:
                 actions.append(a1)
                 actions.append(a2)
                 
-            print('players')
-            print(state.players)
-            
 
             x=soccer_state['ball']['location'][0]
             y = soccer_state['ball']['location'][1] 
@@ -390,7 +387,7 @@ class Match:
                         if heatmap_team1[0][i][j]  == 8:
                             puck_flag2 = 1
 
-            print(f'puck flag:{puck_flag1}')
+
             if record_fn:
                 self._r(record_fn)(team1_state, team2_state, soccer_state=soccer_state, actions=actions,
                                    team1_images=team1_images, team2_images=team2_images)
@@ -454,9 +451,7 @@ if __name__ == '__main__':
         # Create the teams
         team1 = AIRunner() if args.team1 == 'AI' else TeamRunner(args.team1)
         team2 = AIRunner() if args.team2 == 'AI' else TeamRunner(args.team2)
-        
-        print(team1)
-        print(team2)
+
 
         # What should we record?
         recorder = None
@@ -491,8 +486,7 @@ if __name__ == '__main__':
         team1_type, *_ = team1.info() if args.team1 == 'AI' else remote.get(team1.info.remote())
         team2_type, *_ = team2.info() if args.team2 == 'AI' else remote.get(team2.info.remote())
 
-        print(team1.info())
-        print(team2.info())
+
         
         # What should we record?
         assert args.record_state is None or args.record_video is None, "Cannot record both video and state in parallel mode"
